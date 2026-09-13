@@ -1,0 +1,29 @@
+# Build & Binary artifacts
+target/
+build/
+*.class
+
+# Maven Wrapper
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE & Editor files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Logs & Temporary
+*.log
+*.tmp
+temp/
