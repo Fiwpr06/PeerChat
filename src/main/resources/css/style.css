@@ -1,0 +1,320 @@
+/* ==========================================================================
+   PEERCHAT // INDUSTRIAL MISSION CONTROL STYLESHEET
+   Phong cách: Bảng điều khiển kỹ thuật công nghiệp (Dark Slate & Tactical Amber)
+   Tối ưu độ tương phản, dễ nhìn, font chữ rõ ràng, thanh lịch
+   ========================================================================== */
+
+/* Thiết lập gốc toàn ứng dụng */
+.root {
+    -fx-background-color: #0d1117;
+    -fx-font-family: "Consolas", "Segoe UI", "Share Tech Mono", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f0f6fc;
+}
+
+/* Thanh tiêu đề và thông số kỹ thuật trên cùng */
+.hud-bar {
+    -fx-background-color: #161b22;
+    -fx-border-color: #30363d;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 8px 16px;
+    -fx-alignment: center-left;
+}
+
+/* Thanh trạng thái dưới đáy màn hình */
+.hud-status-bar {
+    -fx-background-color: #161b22;
+    -fx-border-color: #30363d;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 6px 16px;
+}
+
+.hud-title {
+    -fx-text-fill: #f59e0b;
+    -fx-font-family: "Segoe UI", "Consolas", sans-serif;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.telemetry-label {
+    -fx-text-fill: #8b949e;
+    -fx-font-size: 12px;
+}
+
+.telemetry-value-nominal {
+    -fx-text-fill: #10b981;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.telemetry-value-warn {
+    -fx-text-fill: #f59e0b;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.telemetry-value-cyan {
+    -fx-text-fill: #38bdf8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* Khung panel chính */
+.terminal-panel {
+    -fx-background-color: #161b22;
+    -fx-border-color: #30363d;
+    -fx-border-width: 1px;
+    -fx-padding: 14px;
+}
+
+.panel-header {
+    -fx-text-fill: #f59e0b;
+    -fx-font-family: "Segoe UI", "Consolas", sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent transparent #30363d transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 0 0 8px 0;
+}
+
+/* Nút bấm điều khiển */
+.button {
+    -fx-background-color: #21262d;
+    -fx-background-radius: 4px;
+    -fx-border-color: #30363d;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-text-fill: #f0f6fc;
+    -fx-font-family: "Segoe UI", "Consolas", sans-serif;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 7px 15px;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #30363d;
+    -fx-border-color: #8b949e;
+    -fx-text-fill: #ffffff;
+}
+
+.button:pressed {
+    -fx-background-color: #161b22;
+}
+
+.button:disabled {
+    -fx-background-color: #161b22;
+    -fx-border-color: #21262d;
+    -fx-text-fill: #484f58;
+}
+
+/* Nút bấm hành động chính (Accent Amber) */
+.button-action {
+    -fx-background-color: #d97706;
+    -fx-border-color: #f59e0b;
+    -fx-text-fill: #ffffff;
+}
+
+.button-action:hover {
+    -fx-background-color: #f59e0b;
+    -fx-border-color: #fbbf24;
+    -fx-text-fill: #000000;
+}
+
+/* Nút cảnh báo / hủy / ngắt kết nối (Signal Red) */
+.button-danger {
+    -fx-background-color: #21262d;
+    -fx-border-color: #ef4444;
+    -fx-text-fill: #ef4444;
+}
+
+.button-danger:hover {
+    -fx-background-color: #dc2626;
+    -fx-border-color: #ef4444;
+    -fx-text-fill: #ffffff;
+}
+
+/* Ô nhập dữ liệu (TextField) */
+.text-field {
+    -fx-background-color: #0d1117;
+    -fx-background-radius: 4px;
+    -fx-border-color: #30363d;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-text-fill: #f0f6fc;
+    -fx-prompt-text-fill: #6e7681;
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-padding: 7px 11px;
+}
+
+.text-field:focused {
+    -fx-border-color: #f59e0b;
+    -fx-background-color: #0d1117;
+}
+
+/* Danh sách client online */
+.list-view {
+    -fx-background-color: #0d1117;
+    -fx-background-insets: 0;
+    -fx-border-color: #30363d;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 3px;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c9d1d9;
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-padding: 8px 10px;
+    -fx-border-color: transparent transparent #21262d transparent;
+    -fx-border-width: 1px;
+}
+
+.list-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #21262d;
+    -fx-text-fill: #f59e0b;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: #2d2613;
+    -fx-text-fill: #fbbf24;
+    -fx-border-color: transparent transparent #21262d #f59e0b;
+    -fx-border-width: 0 0 1px 3px;
+}
+
+/* Thẻ tin nhắn chat */
+.message-card-incoming {
+    -fx-background-color: #161b22;
+    -fx-background-radius: 4px;
+    -fx-border-color: transparent transparent transparent #38bdf8;
+    -fx-border-width: 0 0 0 3px;
+    -fx-padding: 8px 12px;
+    -fx-spacing: 4px;
+}
+
+.message-card-outgoing {
+    -fx-background-color: #1e1d14;
+    -fx-background-radius: 4px;
+    -fx-border-color: transparent #f59e0b transparent transparent;
+    -fx-border-width: 0 3px 0 0;
+    -fx-padding: 8px 12px;
+    -fx-spacing: 4px;
+}
+
+.message-header-incoming {
+    -fx-text-fill: #38bdf8;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.message-header-outgoing {
+    -fx-text-fill: #f59e0b;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.message-body {
+    -fx-text-fill: #f0f6fc;
+    -fx-font-size: 13px;
+}
+
+.message-timestamp {
+    -fx-text-fill: #6e7681;
+    -fx-font-size: 10px;
+}
+
+/* Thanh tiến trình truyền file (ProgressBar) */
+.progress-bar {
+    -fx-pref-height: 10px;
+    -fx-min-height: 10px;
+    -fx-max-height: 10px;
+}
+
+.progress-bar > .track {
+    -fx-background-color: #0d1117;
+    -fx-background-radius: 3px;
+    -fx-border-color: #30363d;
+    -fx-border-width: 1px;
+    -fx-border-radius: 3px;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: linear-gradient(to right, #d97706, #f59e0b);
+    -fx-background-radius: 3px;
+}
+
+/* Thanh cuộn (ScrollBar) thanh lịch */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:vertical {
+    -fx-background-color: #0d1117;
+    -fx-pref-width: 6px;
+    -fx-min-width: 6px;
+    -fx-max-width: 6px;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #161b22;
+    -fx-background-radius: 3px;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #30363d;
+    -fx-background-radius: 3px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #f59e0b;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
+
+.split-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: #30363d;
+    -fx-padding: 1px;
+}
+
+/* Hộp thoại thông báo (Dialog) */
+.terminal-dialog {
+    -fx-background-color: #161b22;
+    -fx-border-color: #f59e0b;
+    -fx-border-width: 1px;
+}
+
+.terminal-dialog > .header-panel {
+    -fx-background-color: #0d1117;
+    -fx-border-color: #30363d;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.terminal-dialog .label {
+    -fx-text-fill: #f0f6fc;
+    -fx-font-family: "Segoe UI", "Consolas", sans-serif;
+}
