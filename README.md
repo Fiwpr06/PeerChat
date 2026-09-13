@@ -1,4 +1,4 @@
-# PEERCHAT // INDUSTRIAL MISSION CONTROL CONSOLE
+# PEERCHAT // NIER:AUTOMATA (YORHA SYSTEM OS)
 
 Ứng dụng Chat và Truyền File nhị phân đa luồng theo kiến trúc **Client–Server** sử dụng **Java**, **JavaFX**, **TCP Socket thuần**, và **Multithreading**.
 
@@ -14,7 +14,7 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
   - **Multithreading**: `ExecutorService` (Cached Thread Pool) trên Server và các Background Worker Threads trên Client.
   - **TCP Packet Framing**: Giao thức đóng khung tự định nghĩa loại bỏ hoàn toàn hiện tượng dính gói / phân mảnh TCP.
   - **Mã hóa băm SHA-256**: Xác thực tính toàn vẹn 100% của file nhị phân sau khi truyền.
-- **Phong cách giao diện**: **Industrial Mission Control Console** — Tông màu than chì tối (`#0D1117`), viền kim loại xám (`#30363D`), điểm nhấn Tactical Amber (`#F59E0B`) và Sky Blue (`#38BDF8`).
+- **Phong cách giao diện**: **NieR:Automata (YoRHa System OS)** — Tông màu giấy cổ vàng ấm (`#CDC8B4`), viền xám rêu (`#8C8675`), đen than chì (`#35332B`), hiệu ứng đảo khối tương phản kinh điển khi rê chuột (Inverted Block Hover), điểm nhấn Rust Ochre (`#B85633`). Hoàn toàn dịu mắt, chống lóa và không gây mỏi mắt khi quan sát lâu.
 
 ---
 
@@ -32,7 +32,7 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
 ### 2.3. Nhắn Tin Đa Kênh (Broadcast & Direct 1-1)
 - **Chat chung (Broadcast)**: Gửi tin nhắn đến toàn bộ người dùng trong phòng.
 - **Chat riêng (Direct 1-1)**: Chỉ cần nhấp chọn tên một người dùng trên danh sách online bên trái; tin nhắn sẽ được Server định tuyến trực tiếp duy nhất đến người đó một cách an toàn.
-- Khung chat phân biệt màu sắc thẻ tin nhắn gửi đi (Tactical Amber) và tin nhắn nhận về (Graphite Slate) cùng thời gian thực gửi tin.
+- Khung chat phân biệt màu sắc thẻ tin nhắn gửi đi (YoRHa Ochre `#B85633`) và tin nhắn nhận về (Muted Slate Taupe `#5A7382`) cùng thời gian thực gửi tin.
 
 ### 2.4. Truyền File Nhị Phân & Đối Soát SHA-256
 - **Chia nhỏ khối dữ liệu (Chunking)**: File được chia nhỏ thành các chunk 64 KB (`CHUNK_SIZE`), đọc và stream qua Socket bằng bộ đệm tĩnh giúp tiết kiệm bộ nhớ RAM, truyền được cả các file dung lượng lớn.

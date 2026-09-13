@@ -16,7 +16,7 @@
     </padding>
 
     <!-- Tiêu đề -->
-    <Label text="TRUYỀN FILE QUA SERVER" styleClass="panel-header"/>
+    <Label text="[ TRUYỀN DỮ LIỆU QUA SERVER ]" styleClass="panel-header"/>
     <Label text="Truyền file theo chunk 64KB, kiểm tra SHA-256." styleClass="telemetry-label"/>
 
     <!-- Người nhận đã chọn -->

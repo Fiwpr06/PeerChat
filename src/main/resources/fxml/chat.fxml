@@ -48,7 +48,7 @@
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="CLIENT ONLINE" styleClass="panel-header"/>
+                    <Label text="[ DANH SÁCH TRỰC TUYẾN ]" styleClass="panel-header"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="peerCountLabel" text="0 ONLINE" styleClass="telemetry-value-nominal"/>
                 </HBox>

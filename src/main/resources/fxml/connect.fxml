@@ -36,8 +36,8 @@
                 </padding>
 
                 <!-- Tiêu đề form -->
-                <Label text="KẾT NỐI SERVER" styleClass="panel-header"/>
-                <Label text="Nhập địa chỉ IP, cổng và mã phiên do Server cung cấp để tham gia." styleClass="telemetry-label"/>
+                <Label text="[ XÁC THỰC KẾT NỐI SERVER ]" styleClass="panel-header"/>
+                <Label text="Nhập địa chỉ IP, cổng và mã phiên do Server cung cấp để kết nối." styleClass="telemetry-label"/>
 
                 <!-- Địa chỉ IP / Host -->
                 <VBox spacing="4">

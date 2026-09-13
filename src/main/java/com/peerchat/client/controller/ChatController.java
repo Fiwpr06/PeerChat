@@ -103,14 +103,14 @@ public class ChatController {
                     HBox cellBox = new HBox(8);
                     cellBox.setAlignment(Pos.CENTER_LEFT);
 
-                    Label statusDot = new Label("●");
-                    statusDot.setStyle("-fx-text-fill: #10b981; -fx-font-size: 11px;");
+                    Label statusDot = new Label("■");
+                    statusDot.setStyle(isSelected() ? "-fx-text-fill: #b8522e; -fx-font-size: 10px;" : "-fx-text-fill: #3e7238; -fx-font-size: 10px;");
 
                     Label nameLabel = new Label(item.getDisplayName());
-                    nameLabel.setStyle("-fx-text-fill: #e2eaf0; -fx-font-weight: bold;");
+                    nameLabel.setStyle(isSelected() ? "-fx-text-fill: #ffffff; -fx-font-weight: bold;" : "-fx-text-fill: #1c1b17; -fx-font-weight: bold;");
 
                     Label coordLabel = new Label("[" + item.getCoordinates() + "]");
-                    coordLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 10px;");
+                    coordLabel.setStyle(isSelected() ? "-fx-text-fill: #c5c0af; -fx-font-size: 10px;" : "-fx-text-fill: #615c4f; -fx-font-size: 10px;");
 
                     cellBox.getChildren().addAll(statusDot, nameLabel, coordLabel);
                     setGraphic(cellBox);
@@ -163,7 +163,7 @@ public class ChatController {
         senderLabel.getStyleClass().add(isOutgoing ? "message-header-outgoing" : "message-header-incoming");
 
         Label targetTag = new Label(msg.isDirect() ? "[RIÊNG]" : "[CHUNG]");
-        targetTag.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 10px;");
+        targetTag.setStyle("-fx-text-fill: #615c4f; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         Label timeLabel = new Label(msg.getFormattedTime());
         timeLabel.getStyleClass().add("message-timestamp");
@@ -231,7 +231,7 @@ public class ChatController {
             public void onConnectionLost(String reason) {
                 ClientUtils.runOnFxThread(() -> {
                     carrierStatusLabel.setText("MẤT KẾT NỐI");
-                    carrierStatusLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+                    carrierStatusLabel.setStyle("-fx-text-fill: #b8522e; -fx-font-weight: bold;");
                     ClientUtils.showAlert(Alert.AlertType.ERROR, "PEERCHAT // MẤT KẾT NỐI",
                             "KẾT NỐI BỊ NGẮT", reason);
                 });
