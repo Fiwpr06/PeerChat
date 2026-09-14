@@ -27,3 +27,4 @@ desktop.ini
 *.log
 *.tmp
 temp/
+server_storage/

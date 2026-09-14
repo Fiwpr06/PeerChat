@@ -34,7 +34,7 @@ public class Server {
         this.connectionCode = generateConnectionCode(ProtocolConstants.CONNECTION_CODE_LENGTH);
         this.connectionManager = new ConnectionManager();
         this.chatService = new ChatService(connectionManager);
-        this.fileTransferService = new FileTransferService(connectionManager);
+        this.fileTransferService = new FileTransferService(connectionManager, chatService);
         this.threadPool = Executors.newCachedThreadPool();
     }
 
@@ -44,7 +44,7 @@ public class Server {
             try {
                 port = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
-                System.err.println("Cổng không hợp lệ, dùng cổng mặc định: " + ProtocolConstants.DEFAULT_PORT);
+                System.err.println("Invalid port number, using default: " + ProtocolConstants.DEFAULT_PORT);
             }
         }
 
@@ -81,12 +81,12 @@ public class Server {
 
                 } catch (SocketException e) {
                     if (!running) break;
-                    LOGGER.warning("Lỗi accept socket: " + e.getMessage());
+                    LOGGER.warning("Socket accept error: " + e.getMessage());
                 }
             }
 
         } catch (IOException e) {
-            System.err.println("Không thể mở cổng " + port + ": " + e.getMessage());
+            System.err.println("Failed to bind port " + port + ": " + e.getMessage());
         } finally {
             stop();
         }
@@ -96,7 +96,7 @@ public class Server {
     public void stop() {
         if (!running) return;
         running = false;
-        System.out.println("\n[SERVER] Đang dừng PeerChat Server...");
+        System.out.println("\n[SERVER] Stopping PeerChat Server...");
         connectionManager.closeAll();
 
         try {
@@ -106,7 +106,7 @@ public class Server {
         } catch (IOException ignored) {}
 
         threadPool.shutdownNow();
-        System.out.println("[SERVER] Server đã dừng hoàn toàn.");
+        System.out.println("[SERVER] Server stopped completely.");
     }
 
     public String getConnectionCode() { return connectionCode; }

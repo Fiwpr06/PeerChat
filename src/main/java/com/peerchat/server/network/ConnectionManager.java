@@ -22,7 +22,7 @@ public class ConnectionManager {
     // Đăng ký client mới và phát danh sách online cho mọi người
     public void addClient(ConnectedClient client) {
         clients.put(client.getClientId(), client);
-        LOGGER.info("[NODE_JOIN] Client kết nối: " + client);
+        LOGGER.info("[NODE_JOIN] Client connected: " + client);
         broadcastClientList();
     }
 
@@ -30,7 +30,7 @@ public class ConnectionManager {
     public void removeClient(String clientId) {
         ConnectedClient client = clients.remove(clientId);
         if (client != null) {
-            LOGGER.info("[NODE_LOST] Client rời mạng: " + client);
+            LOGGER.info("[NODE_LOST] Client disconnected: " + client);
             client.close();
             broadcastClientList();
         }
@@ -70,12 +70,12 @@ public class ConnectionManager {
                 recipient.sendMessage(msg);
                 return true;
             } catch (IOException e) {
-                LOGGER.log(Level.WARNING, "Không thể gửi gói tin tới " + targetId + ": " + e.getMessage());
+                LOGGER.log(Level.WARNING, "Failed to send packet to " + targetId + ": " + e.getMessage());
                 removeClient(targetId);
                 return false;
             }
         } else {
-            LOGGER.warning("Không tìm thấy người nhận: " + targetId);
+            LOGGER.warning("Recipient node not found: " + targetId);
             return false;
         }
     }
@@ -89,7 +89,7 @@ public class ConnectionManager {
             try {
                 client.sendMessage(msg);
             } catch (IOException e) {
-                LOGGER.log(Level.WARNING, "Lỗi broadcast tới " + client.getClientId() + ": " + e.getMessage());
+                LOGGER.log(Level.WARNING, "Broadcast error to " + client.getClientId() + ": " + e.getMessage());
                 removeClient(client.getClientId());
             }
         }

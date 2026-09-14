@@ -68,7 +68,7 @@ public class ClientHandler implements Runnable {
                 try {
                     msg = ProtocolMessage.readFrom(in);
                 } catch (EOFException | SocketException e) {
-                    LOGGER.info("[NODE_DISCONNECT] Client ngắt kết nối: " + displayName + " (" + clientId + ")");
+                    LOGGER.info("[NODE_DISCONNECT] Client disconnected: " + displayName + " (" + clientId + ")");
                     break;
                 }
 
@@ -76,11 +76,11 @@ public class ClientHandler implements Runnable {
             }
 
         } catch (SocketTimeoutException e) {
-            LOGGER.warning("[TIMEOUT] Quá thời gian chờ bắt tay từ: " + socket.getRemoteSocketAddress());
+            LOGGER.warning("[TIMEOUT] Handshake timeout from: " + socket.getRemoteSocketAddress());
         } catch (IOException e) {
-            LOGGER.log(Level.INFO, "[CLIENT_IO] Mất kết nối tới client: " + displayName + ": " + e.getMessage());
+            LOGGER.log(Level.INFO, "[CLIENT_IO] Connection lost to client " + displayName + ": " + e.getMessage());
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "[CLIENT_ERROR] Lỗi xử lý client: " + e.getMessage(), e);
+            LOGGER.log(Level.SEVERE, "[CLIENT_ERROR] Client handling error: " + e.getMessage(), e);
         } finally {
             cleanup();
         }
@@ -90,7 +90,7 @@ public class ClientHandler implements Runnable {
     private boolean performHandshake() throws IOException {
         ProtocolMessage initMsg = ProtocolMessage.readFrom(in);
         if (initMsg.getType() != MessageType.CONNECT_REQUEST) {
-            sendResponse(false, "Giao thức không đúng: Cần gửi CONNECT_REQUEST trước", null);
+            sendResponse(false, "INVALID_PROTOCOL: CONNECT_REQUEST required first", null);
             return false;
         }
 
@@ -104,8 +104,8 @@ public class ClientHandler implements Runnable {
 
         // Kiểm tra mã phiên
         if (code == null || !code.trim().equalsIgnoreCase(expectedConnectionCode)) {
-            LOGGER.warning("[AUTH_FAIL] Sai mã kết nối '" + code + "' từ: " + socket.getRemoteSocketAddress());
-            sendResponse(false, "ACCESS_DENIED: Sai mã kết nối Server", null);
+            LOGGER.warning("[AUTH_FAIL] Invalid connection code '" + code + "' from: " + socket.getRemoteSocketAddress());
+            sendResponse(false, "ACCESS_DENIED: Invalid server connection code", null);
             return false;
         }
 
@@ -118,10 +118,17 @@ public class ClientHandler implements Runnable {
         // Gửi xác nhận thành công trước để Client chuyển màn hình
         sendResponse(true, "CARRIER_ACQUIRED", clientId);
 
+        // Gửi lịch sử tin nhắn phòng gần nhất cho client vừa vào phòng (Late Joiner Sync)
+        java.util.List<Message> history = chatService.getRecentHistory();
+        if (!history.isEmpty()) {
+            ProtocolMessage histMsg = ProtocolMessage.createText(MessageType.CHAT_HISTORY, Message.listToJson(history));
+            histMsg.writeTo(out);
+        }
+
         // Đăng ký client vào danh sách và thông báo cho mọi người
         connectionManager.addClient(connectedClient);
 
-        LOGGER.info("[AUTH_OK] Xác thực thành công: " + displayName + " [" + clientId + "]");
+        LOGGER.info("[AUTH_OK] Authentication successful: " + displayName + " [" + clientId + "]");
         return true;
     }
 
@@ -134,38 +141,28 @@ public class ClientHandler implements Runnable {
                 chatMsg.setSenderName(displayName);
                 chatService.processAndRoute(chatMsg);
             }
-            case FILE_REQUEST -> {
-                FileInfo info = FileInfo.fromJson(msg.getPayloadAsText());
-                info.setSenderId(clientId);
-                info.setSenderName(displayName);
-                fileTransferService.handleFileRequest(info);
-            }
-            case FILE_ACCEPT -> {
-                FileInfo info = FileInfo.fromJson(msg.getPayloadAsText());
-                info.setTargetId(clientId);
-                fileTransferService.handleFileAccept(info);
-            }
-            case FILE_REJECT -> {
-                FileInfo info = FileInfo.fromJson(msg.getPayloadAsText());
-                info.setTargetId(clientId);
-                fileTransferService.handleFileReject(info);
-            }
             case FILE_METADATA -> {
                 FileInfo info = FileInfo.fromJson(msg.getPayloadAsText());
                 info.setSenderId(clientId);
-                fileTransferService.handleFileMetadata(info);
+                info.setSenderName(displayName);
+                fileTransferService.handleFileUploadMetadata(info);
             }
             case FILE_DATA -> {
-                // Chuyển tiếp chunk dữ liệu trực tiếp tới người nhận
-                fileTransferService.relayFileData(msg, clientId);
+                fileTransferService.handleFileUploadData(msg, clientId);
             }
             case FILE_COMPLETE -> {
                 FileInfo info = FileInfo.fromJson(msg.getPayloadAsText());
-                fileTransferService.handleFileComplete(info);
+                info.setSenderId(clientId);
+                info.setSenderName(displayName);
+                fileTransferService.handleFileUploadComplete(info);
             }
-            case FILE_STATUS -> {
-                FileInfo info = FileInfo.fromJson(msg.getPayloadAsText());
-                fileTransferService.handleFileStatus(info);
+            case FILE_DOWNLOAD_REQ -> {
+                String payload = msg.getPayloadAsText();
+                String fileId = extractParam(payload, "fileId");
+                if (fileId == null || fileId.isEmpty()) {
+                    fileId = FileInfo.fromJson(payload).getFileId();
+                }
+                fileTransferService.handleFileDownloadRequest(fileId, clientId);
             }
             case PING -> {
                 try {
@@ -173,10 +170,10 @@ public class ClientHandler implements Runnable {
                 } catch (IOException ignored) {}
             }
             case DISCONNECT -> {
-                LOGGER.info("[NODE_QUIT] Client chủ động ngắt kết nối: " + displayName);
+                LOGGER.info("[NODE_QUIT] Client disconnected voluntarily: " + displayName);
                 cleanup();
             }
-            default -> LOGGER.warning("Gói tin chưa hỗ trợ: " + msg.getType());
+            default -> LOGGER.warning("[UNSUPPORTED_PACKET] Packet not supported: " + msg.getType());
         }
     }
 
