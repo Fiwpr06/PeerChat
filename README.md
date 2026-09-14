@@ -20,21 +20,32 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
 
 ## 2. Các Tính Năng Chính
 
-### 2.1. Quản lý Kết Nối & Xác Thực Mã Phòng
-- Server tự động sinh mã kết nối ngẫu nhiên 5 ký tự (ví dụ: `8KQ2X`) loại trừ các ký tự dễ nhầm lẫn (như `0`/`O`, `1`/`I`).
-- Server tự động nhận diện cả địa chỉ `127.0.0.1` (Localhost) và địa chỉ IP mạng LAN (ví dụ `192.168.1.7`) để kết nối nội mạng hoặc qua Wi-Fi.
-- Client chỉ được phép vào phòng chat khi nhập đúng địa chỉ IP, cổng, mã phòng và tên hiển thị (Callsign).
+### 2.1. Quản lý Kết Nối, Xác Thực Mã Phòng & Giao Diện Máy Chủ (Server GUI)
+- **Giao diện điều hành Server đồ họa (Server Command Center)**:
+  - Server được trang bị giao diện đồ họa trực quan chuẩn phong cách **NieR:Automata**.
+  - **Khối Mã Phòng Nổi Bật (Connection Code Box)**: Hiển thị mã kết nối 5 ký tự to rõ kèm **Nút bấm 1 chạm `[ 📋 SAO CHÉP MÃ ]`** (Copy to Clipboard) giúp sao chép mã phòng tức thì để gửi cho người khác hoặc dán vào Client.
+  - Tự động hiển thị và cung cấp nút copy địa chỉ IP Localhost (`127.0.0.1`) và IP mạng LAN (`192.168.x.x`).
+  - Bảng quản lý các Client đang kết nối thời gian thực và khung Console Log giám sát toàn bộ hoạt động.
+  - Vẫn hỗ trợ chạy chế độ dòng lệnh thuần (CLI) khi thêm cờ `--cli` / `--nogui`.
+- **Bảo mật kết nối**: Client chỉ được phép vào phòng chat khi nhập đúng địa chỉ IP, cổng, mã phòng và tên hiển thị (Callsign). Ô nhập tên ở màn hình đăng nhập để trống, người dùng tự điền tên mong muốn.
 
 ### 2.2. Đồng Bộ Danh Sách Người Dùng Thời Gian Thực
 - Server quản lý danh sách kết nối qua `ConnectionManager`.
 - Khi có một Client mới tham gia hoặc ngắt kết nối (kể cả trường hợp tắt đột ngột/mất mạng), Server tự động phát hiện, dọn dẹp tài nguyên và gửi thông điệp `CLIENT_LIST_UPDATE` cập nhật tức thì đến toàn bộ người dùng còn lại.
 
-### 2.3. Nhắn Tin Đa Kênh, Phân Lập Trò Chuyện & Bong Bóng Chat Chuẩn UX
+### 2.3. Nhắn Tin Đa Kênh, Phân Lập Trò Chuyện & Bố Cục NieR Chuẩn UX
 - **Kênh Chung & Chat Riêng Phân Lập Độc Lập**:
   - Dòng cố định đầu danh sách: `● KÊNH CHUNG`. Nhấp vào ai trên danh sách để chat riêng 1-1 với người đó; nhấp lại dòng đầu để quay về kênh chung toàn phòng cực kỳ trực quan mà không cần nút bấm phụ.
   - **Phân lập hội thoại nghiêm ngặt**: Tin nhắn và tập tin gửi trong Kênh Chung sẽ được toàn bộ mọi người trong phòng nhìn thấy và phản hồi (tương tự Group Chat). Khi chọn một người dùng cụ thể, luồng chat chuyển sang hội thoại riêng tư và chỉ 2 người thấy tin nhắn/tập tin của nhau.
+- **Thanh Navigation (HUD Bar) Sáng Ấm & Dịu Mắt**:
+  - Thanh tiêu đề trên cùng được thiết kế đồng bộ với bảng màu cát ấm (`#C8C3B0` viền `#4B473B`), loại bỏ dải đen u tối trước đây, tạo cảm giác liền mạch, sáng sủa và sắc nét.
+- **Tối Ưu Bố Cục & Hỗ Trợ Co Giãn Tự Do (SplitPane)**:
+  - Thanh bên trái (Danh sách trực tuyến) được rút gọn còn một nửa (~13%).
+  - Thanh bên phải (Kho tài liệu) được thu gọn 30% (~20%).
+  - Khung chat trung tâm được mở rộng lên **67%** tạo không gian rộng rãi để đọc tin nhắn và xem ảnh.
+  - Cả 3 vùng đều nằm trong `SplitPane`, người dùng có thể dùng chuột kéo thả vách ngăn để tự do điều chỉnh chiều rộng theo nhu cầu.
 - **Nút Gửi File Tiện Lợi & Phím Tắt Soạn Thảo**:
-  - Nút bấm **`[ 📎 GỬI FILE ]`** được tích hợp ngay cạnh ô nhập tin nhắn để chọn và gửi file nhanh chóng vào cuộc trò chuyện đang mở.
+  - Nút bấm **`[ 📎 GỬI FILE ]`** được mở rộng (`125px`) đặt ngay cạnh ô nhập tin nhắn, hiển thị trọn vẹn văn bản trên mọi độ phân giải.
   - Nhấn `Enter`: Gửi tin nhắn ngay lập tức.
   - Nhấn `Shift + Enter`: Xuống dòng để soạn thảo văn bản dài nhiều đoạn (`TextArea`).
   - Hỗ trợ **kéo thả tệp tin trực tiếp (Drag & Drop)** từ máy tính vào khung chat hoặc ô nhập tin nhắn.
@@ -48,6 +59,8 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
 
 ### 2.4. Lưu Trữ & Truyền File Store-and-Forward (Kho Tài Liệu Phòng)
 - **Đính kèm & Kéo thả tập tin linh hoạt**: Người dùng có thể nhấn nút `[ 📎 GỬI FILE ]` hoặc kéo thả trực tiếp file từ máy tính vào khung chat để gửi file vào cuộc trò chuyện đang chọn (Kênh Chung hoặc Chat Riêng).
+- **Cơ chế Báo Tệp Đã Mất Khi Không Tồn Tại**:
+  - Nếu tệp tin bị xóa hoặc không còn trên máy chủ, khi người dùng bấm tải, hệ thống lập tức phản hồi thông báo và đổi nút thành **`❌ FILE ĐÃ MẤT`** (vô hiệu hóa nút), hoàn toàn không bị treo ở trạng thái đang tải.
 - **Kho Tài Liệu Phòng (Shared Repository Panel)**:
   - Bảng bên phải liệt kê các tập tin đã được gửi trong phòng với bộ đếm số lượng file thời gian thực.
   - Hiển thị tinh gọn biểu tượng loại file (`🖼` cho ảnh, `🗎` cho tệp tin), tên file, dung lượng, người tải lên và nút bấm tải về chuẩn **`[ ⬇ TẢI VỀ ]`**.
@@ -127,8 +140,11 @@ PeerChat/
     │       │       ├── ChecksumUtils.java   # Tính toán & so khớp mã băm SHA-256
     │       │       └── FileUtils.java       # Định dạng dung lượng và tiện ích file
     │       │
-    │       ├── server/             # Module máy chủ (chạy độc lập qua console)
-    │       │   ├── Server.java              # Lớp chính khởi chạy ServerSocket TCP
+    │       ├── server/             # Module máy chủ (hỗ trợ GUI NieR và Console)
+    │       │   ├── Server.java              # Lớp chính khởi chạy ServerSocket TCP & CLI fallback
+    │       │   ├── ServerApp.java           # Điểm vào JavaFX GUI cho Server
+    │       │   ├── controller/
+    │       │   │   └── ServerController.java# Điều khiển giao diện quản trị Server (NieR style)
     │       │   ├── model/
     │       │   │   └── ConnectedClient.java # Đại diện cho một kết nối client tại server
     │       │   ├── network/
@@ -159,11 +175,12 @@ PeerChat/
     │
     └── resources/
         ├── css/
-        │   └── style.css           # Bảng màu giao diện Industrial Console
+        │   └── style.css           # Bảng màu giao diện NieR:Automata Military OS
         └── fxml/
             ├── connect.fxml        # Giao diện màn hình đăng nhập
             ├── chat.fxml           # Giao diện màn hình chat chính
-            └── file-transfer.fxml  # Giao diện khối truyền file nhúng
+            ├── file-transfer.fxml  # Giao diện khối truyền file nhúng
+            └── server.fxml         # Giao diện bảng điều khiển Server (NieR:Automata OS)
 ```
 
 ---
@@ -178,13 +195,14 @@ PeerChat/
 Dự án đã tích hợp sẵn 2 kịch bản tự động:
 1. **Bước 1 — Khởi động Server**:
    - Nhấp đúp vào file `START-SERVER.bat`.
-   - Cửa sổ Server Console sẽ xuất hiện, tự động in địa chỉ IP và mã kết nối 5 ký tự (ví dụ: `RQ7AB`).
+   - Cửa sổ điều khiển Server giao diện NieR:Automata sẽ xuất hiện, tự động khởi chạy socket, hiển thị địa chỉ IP LAN và **Mã kết nối 5 ký tự** cỡ lớn.
+   - Bạn chỉ cần bấm nút `[ 📋 SAO CHÉP MÃ ]` hoặc `[ 📋 SAO CHÉP IP ]` để chia sẻ cho các máy client chỉ bằng 1 cú nhấp chuột.
 2. **Bước 2 — Khởi động Client 1**:
    - Nhấp đúp vào file `START-CLIENT.bat`.
-   - Nhập tên hiển thị (ví dụ: `Alice`), nhập mã phòng từ server và nhấn **KẾT NỐI HỆ THỐNG**.
+   - Nhập tên hiển thị (ví dụ: `Alice`), dán mã phòng hoặc IP từ server và nhấn **KẾT NỐI HỆ THỐNG**.
 3. **Bước 3 — Khởi động Client 2 (và các Client tiếp theo)**:
    - Tiếp tục nhấp đúp file `START-CLIENT.bat` một lần nữa để mở cửa sổ thứ hai.
-   - Nhập tên hiển thị (ví dụ: `Bob`), nhập mã phòng và nhấn **KẾT NỐI HỆ THỐNG**.
+   - Nhập tên hiển thị (ví dụ: `Bob`), dán mã phòng và nhấn **KẾT NỐI HỆ THỐNG**.
    - Hai client giờ đây đã thấy nhau trên danh sách trực tuyến và có thể bắt đầu chat hoặc gửi file!
 
 ### 5.3. Chạy Bằng Dòng Lệnh Terminal / PowerShell
@@ -195,11 +213,16 @@ Dự án đã tích hợp sẵn 2 kịch bản tự động:
    ```
 
 2. **Chạy Server**:
-   ```powershell
-   java -cp target\classes com.peerchat.server.Server
-   # Hoặc chỉ định cổng tùy ý:
-   java -cp target\classes com.peerchat.server.Server 5000
-   ```
+   - **Chế độ GUI (khuyến nghị)**:
+     ```powershell
+     java --module-path "%JFX%" --add-modules javafx.controls,javafx.fxml -cp target\classes com.peerchat.server.ServerApp
+     ```
+   - **Chế độ Console/CLI thuần (không cần GUI)**:
+     ```powershell
+     java -cp target\classes com.peerchat.server.Server --cli
+     # Hoặc chỉ định cổng tùy ý:
+     java -cp target\classes com.peerchat.server.Server 5000 --cli
+     ```
 
 3. **Chạy Client JavaFX**:
    ```powershell
