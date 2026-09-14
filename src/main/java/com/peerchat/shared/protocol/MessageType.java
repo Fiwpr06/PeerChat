@@ -10,11 +10,12 @@ public enum MessageType {
     // Cập nhật danh sách client đang online
     CLIENT_LIST_UPDATE,
 
-    // Tin nhắn chat văn bản
+    // Tin nhắn chat văn bản và lịch sử
     CHAT_MESSAGE,
     CHAT_BROADCAST,
+    CHAT_HISTORY,
 
-    // Đàm phán và truyền file theo chunk
+    // Truyền file theo chunk và tải file từ server
     FILE_REQUEST,
     FILE_ACCEPT,
     FILE_REJECT,
@@ -22,6 +23,8 @@ public enum MessageType {
     FILE_DATA,
     FILE_COMPLETE,
     FILE_STATUS,
+    FILE_DOWNLOAD_REQ,
+    FILE_DOWNLOAD_COMPLETE,
 
     // Kiểm tra kết nối và lỗi
     PING,
