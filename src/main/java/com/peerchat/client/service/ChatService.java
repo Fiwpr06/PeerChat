@@ -3,6 +3,7 @@ package com.peerchat.client.service;
 import com.peerchat.client.network.MessageSender;
 import com.peerchat.client.util.ClientUtils;
 import com.peerchat.shared.model.ClientInfo;
+import com.peerchat.shared.model.FileInfo;
 import com.peerchat.shared.model.Message;
 import com.peerchat.shared.protocol.MessageType;
 import com.peerchat.shared.protocol.ProtocolConstants;
@@ -21,6 +22,7 @@ public class ChatService {
     // Danh sách quan sát được dùng để cập nhật giao diện JavaFX tự động
     private final ObservableList<ClientInfo> onlinePeers = FXCollections.observableArrayList();
     private final ObservableList<Message> messageHistory = FXCollections.observableArrayList();
+    private final ObservableList<FileInfo> sharedFiles = FXCollections.observableArrayList();
 
     public ChatService(MessageSender sender, String clientId, String displayName) {
         this.sender = sender;
@@ -30,6 +32,7 @@ public class ChatService {
 
     public ObservableList<ClientInfo> getOnlinePeers() { return onlinePeers; }
     public ObservableList<Message> getMessageHistory() { return messageHistory; }
+    public ObservableList<FileInfo> getSharedFiles() { return sharedFiles; }
     public String getClientId() { return clientId; }
     public String getDisplayName() { return displayName; }
 
@@ -50,8 +53,14 @@ public class ChatService {
 
     // Nhận tin nhắn mới từ Server và thêm vào lịch sử hiển thị
     public void onChatMessageReceived(Message message) {
-        if (clientId.equals(message.getSenderId())) return; // Bỏ qua nếu là tin nhắn của chính mình
-        ClientUtils.runOnFxThread(() -> messageHistory.add(message));
+        // Nếu là tin nhắn văn bản của chính mình thì bỏ qua vì đã thêm ở máy gửi trước đó
+        if (clientId.equals(message.getSenderId()) && !message.isFileMessage()) return;
+        ClientUtils.runOnFxThread(() -> {
+            messageHistory.add(message);
+            if (message.isFileMessage() && message.getFileInfo() != null) {
+                sharedFiles.add(message.getFileInfo());
+            }
+        });
     }
 
     // Cập nhật danh sách các Client đang online (loại bỏ chính mình khỏi danh sách hiển thị)
@@ -71,7 +80,13 @@ public class ChatService {
         if (history == null) return;
         ClientUtils.runOnFxThread(() -> {
             messageHistory.clear();
+            sharedFiles.clear();
             messageHistory.addAll(history);
+            for (Message m : history) {
+                if (m.isFileMessage() && m.getFileInfo() != null) {
+                    sharedFiles.add(m.getFileInfo());
+                }
+            }
         });
     }
 }

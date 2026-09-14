@@ -32,7 +32,7 @@ public class ChatService {
 
         // Đóng gói tin nhắn dưới dạng CHAT_BROADCAST
         ProtocolMessage outMsg = ProtocolMessage.createText(MessageType.CHAT_BROADCAST, message.toJson());
-        connectionManager.routeMessage(message.getTargetId(), outMsg, message.getSenderId());
+        connectionManager.routeMessage(message.getTargetId(), outMsg, message.isFileMessage() ? null : message.getSenderId());
     }
 
     // Thêm một tin nhắn vào bộ đệm lịch sử
