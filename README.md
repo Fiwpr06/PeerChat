@@ -29,20 +29,27 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
 - Server quản lý danh sách kết nối qua `ConnectionManager`.
 - Khi có một Client mới tham gia hoặc ngắt kết nối (kể cả trường hợp tắt đột ngột/mất mạng), Server tự động phát hiện, dọn dẹp tài nguyên và gửi thông điệp `CLIENT_LIST_UPDATE` cập nhật tức thì đến toàn bộ người dùng còn lại.
 
-### 2.3. Nhắn Tin Đa Kênh & Bong Bóng Chat Chuẩn UX
-- **Chat chung (Broadcast)**: Gửi tin nhắn đến toàn bộ người dùng trong phòng.
-- **Chat riêng (Direct 1-1)**: Chỉ cần nhấp chọn tên một người dùng trên danh sách online bên trái; tin nhắn sẽ được Server định tuyến trực tiếp duy nhất đến người đó một cách an toàn.
+### 2.3. Nhắn Tin Đa Kênh, Phím Tắt & Bong Bóng Chat Chuẩn UX
+- **Kênh Chung & Chat Riêng tiện lợi**:
+  - Dòng cố định đầu danh sách: `● KÊNH CHUNG (TẤT CẢ PHÒNG)`. Nhấp vào ai trên danh sách để chat riêng 1-1 với người đó; nhấp lại dòng đầu để quay về chat chung toàn phòng cực kỳ trực quan mà không cần nút bấm phụ.
+- **Phím tắt nhập liệu chuyên nghiệp**:
+  - Nhấn `Enter`: Gửi tin nhắn ngay lập tức.
+  - Nhấn `Shift + Enter`: Xuống dòng để soạn thảo văn bản dài nhiều đoạn (`TextArea`).
 - **Phân biệt gửi / nhận trực quan**:
-  - Tin nhắn của mình: Căn lề **PHẢI**, viền gạch nung YoRHa Ochre (`#B8522E`), tên "BẠN [Callsign]".
+  - Tin nhắn của mình: Căn lề **PHẢI**, viền gạch nung YoRHa Ochre (`#B8522E`), tên "BẠN [Callsign]". Thông báo tệp gửi đi cũng xuất hiện ngay trong luồng chat của chính mình.
   - Tin nhắn của người khác: Căn lề **TRÁI**, kèm **Avatar huy hiệu chữ cái đầu** (`[A]`, `[B]`) màu xám than NieR (`#35332B`), tên người gửi màu xanh đá phiến (`#2B4A62`).
 - **Đồng bộ lịch sử tin nhắn (Late Joiner Sync)**: Người tham gia phòng sau vẫn nhìn thấy toàn bộ tin nhắn và các tập tin được chia sẻ trước đó nhờ bộ đệm vòng In-Memory (100 tin gần nhất) lưu trên RAM của Server (hoàn toàn không cần Database).
 
-### 2.4. Lưu Trữ & Truyền File Store-and-Forward Qua Server
-- **Mô hình Store-and-Forward**: Người gửi tải file lên thư mục lưu trữ tạm của Server (`server_storage/`), Server xác thực mã băm SHA-256 rồi phát thông báo chia sẻ file vào luồng chat của phòng.
-- **Không làm phiền (Zero Annoying Popups)**: Loại bỏ hoàn toàn các hộp thoại popup cắt ngang màn hình. Người nhận nhận diện file và có thể tải về bất cứ lúc nào.
-- **Nút đính kèm nhanh 📎**: Bổ sung nút đính kèm tập tin ngay cạnh ô nhập tin nhắn ở khung chat chính.
+### 2.4. Lưu Trữ & Kéo Thả File Store-and-Forward (Kho Tài Liệu Phòng)
+- **Kéo thả tập tin trực tiếp (Drag & Drop)**: Bỏ hoàn toàn nút đính kèm cồng kềnh; người dùng chỉ cần kéo thả file trực tiếp từ File Explorer vào khung chat hoặc ô soạn tin nhắn với hiệu ứng viền đứt nét nổi bật. Thông báo tệp được chia sẻ sẽ hiển thị tinh gọn trong luồng chat.
+- **Kho Tài Liệu Phòng (Shared Repository Panel)**:
+  - Bảng bên phải liệt kê toàn bộ tập tin đã được gửi trong phòng với bộ đếm số lượng file thời gian thực.
+  - Tự động phân loại định dạng và gắn huy hiệu icon: `[PDF]`, `[ẢNH]`, `[NÉN]`, `[VĂN BẢN]`, `[CODE]`, `[MEDIA]`.
+  - Hiển thị tên file, dung lượng, người tải lên và nút bấm tải về chuẩn **`[ ⬇ TẢI VỀ ]`**.
+  - Tải xong tự động chuyển sang nút **`[ 📂 MỞ THƯ MỤC ]`** giúp mở ngay thư mục chứa file mà không cần popup thông báo che khuất màn hình.
+  - Tích hợp nút bật/tắt **`[ 📁 KHO TÀI LIỆU ]`** trên thanh HUD để thu gọn hoặc mở rộng toàn màn hình cho khung chat.
 - **Chia nhỏ khối dữ liệu (Chunking)**: File được chia nhỏ thành các chunk 64 KB (`CHUNK_SIZE`), đọc và stream qua Socket bằng bộ đệm tĩnh giúp tiết kiệm RAM, truyền được cả file dung lượng lớn.
-- **Toàn vẹn dữ liệu SHA-256**: Hệ thống tự động tính và đối soát mã băm SHA-256 sau khi tải về, hiển thị kết quả xác thực xanh `[ THÀNH CÔNG // SHA-256 KHỚP 100% ]` và cung cấp nút mở thư mục chứa file ngay lập tức.
+- **Toàn vẹn dữ liệu SHA-256**: Hệ thống tự động tính và đối soát mã băm SHA-256 sau khi tải về, hiển thị kết quả xác thực xanh `[ THÀNH CÔNG // SHA-256 KHỚP 100% ]`.
 
 ---
 
@@ -207,7 +214,7 @@ Dự án đã tích hợp sẵn 2 kịch bản tự động:
 | 5 | **Đồng bộ danh sách trực tuyến** | Hoàn tất | Cập nhật tự động thời gian thực khi có client kết nối hoặc ngắt kết nối. |
 | 6 | **Chat Broadcast & Direct 1-1** | Hoàn tất | Hỗ trợ chat chung cho toàn phòng và chat riêng tư 1-1 khi bấm chọn người nhận; bong bóng chat phân biệt rõ người gửi. |
 | 7 | **Đồng bộ lịch sử tin nhắn** | Hoàn tất | Người vào sau (Late Joiner) nhận lại 100 tin nhắn và file cũ qua bộ đệm RAM Server mà không cần Database. |
-| 8 | **Lưu trữ & Truyền file Store-and-Forward** | Hoàn tất | File được lưu tạm trên `server_storage/`, hiển thị Thẻ File trong chat kèm nút Tải về, không dùng popup phiền phức. |
+| 8 | **Lưu trữ & Truyền file Store-and-Forward** | Hoàn tất | File được lưu tạm trên `server_storage/`, hiển thị trong Kho Tài Liệu Phòng kèm nút Tải về, không dùng popup phiền phức. |
 | 9 | **Kiểm tra mã băm SHA-256** | Hoàn tất | Tự động tính và đối soát mã băm SHA-256 sau khi tải xong, xác thực tính toàn vẹn 100%. |
 | 10 | **Đa luồng (Multithreading)** | Hoàn tất | Server dùng `ExecutorService` cached thread pool; Client có luồng gửi/nhận riêng biệt. |
 | 11 | **Thread Safety & JavaFX UI** | Hoàn tất | Mọi cập nhật giao diện đều qua `Platform.runLater()`; Socket stream được bảo vệ an toàn luồng. |
