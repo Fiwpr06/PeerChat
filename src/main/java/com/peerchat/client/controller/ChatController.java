@@ -27,8 +27,13 @@ import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -36,6 +41,8 @@ import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 // Điều khiển màn hình chat chính và quản lý tương tác người dùng
 public class ChatController {
@@ -44,10 +51,17 @@ public class ChatController {
     // Kênh chung mặc định cố định ở đầu danh sách
     private static final ClientInfo CHANNEL_BROADCAST = new ClientInfo(
             ProtocolConstants.TARGET_ALL,
-            "● KÊNH CHUNG (TẤT CẢ PHÒNG)",
+            "● KÊNH CHUNG",
             "ALL",
             0
     );
+
+    // Bộ nhớ đệm ảnh xem trước và thư mục tạm lưu trữ ảnh preview
+    private static final Map<String, Image> imageCache = new ConcurrentHashMap<>();
+    private static final File CACHE_DIR = new File(System.getProperty("java.io.tmpdir"), "peerchat_cache");
+    static {
+        CACHE_DIR.mkdirs();
+    }
 
     @FXML private Label nodeCallsignLabel;
     @FXML private Label serverCoordinatesLabel;
@@ -61,6 +75,7 @@ public class ChatController {
     @FXML private ListView<ClientInfo> peersListView;
     @FXML private ScrollPane chatScrollPane;
     @FXML private VBox messagesContainer;
+    @FXML private Button attachFileButton;
     @FXML private TextArea messageInputField;
     @FXML private Button sendButton;
 
@@ -161,11 +176,12 @@ public class ChatController {
         peersListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == null || ProtocolConstants.TARGET_ALL.equals(newVal.getClientId())) {
                 activeSelectedPeer = null;
-                channelTargetLabel.setText("KÊNH CHUNG (TẤT CẢ PHÒNG)");
+                channelTargetLabel.setText("KÊNH CHUNG");
             } else {
                 activeSelectedPeer = newVal;
                 channelTargetLabel.setText("CHAT RIÊNG VỚI // " + newVal.getDisplayName() + " [" + newVal.getCoordinates() + "]");
             }
+            reloadMessagesForActiveChannel();
         });
 
         // Mặc định chọn dòng đầu tiên (Kênh chung)
@@ -183,6 +199,32 @@ public class ChatController {
             peersListView.getSelectionModel().select(currentSelected);
         } else {
             peersListView.getSelectionModel().select(0);
+        }
+    }
+
+    // Tải lại các tin nhắn tương ứng với kênh đang mở (Kênh chung hoặc Chat riêng)
+    private void reloadMessagesForActiveChannel() {
+        messagesContainer.getChildren().clear();
+        for (Message msg : chatService.getMessageHistory()) {
+            if (isMessageBelongToActiveChannel(msg)) {
+                renderMessageCard(msg);
+            }
+        }
+    }
+
+    // Kiểm tra tin nhắn có thuộc về cuộc trò chuyện hiện tại hay không
+    private boolean isMessageBelongToActiveChannel(Message msg) {
+        if (msg == null) return false;
+        String myId = chatService.getClientId();
+        if (activeSelectedPeer == null) {
+            // Kênh chung: chỉ nhận các tin nhắn gửi tới ALL
+            return !msg.isDirect() || ProtocolConstants.TARGET_ALL.equalsIgnoreCase(msg.getTargetId());
+        } else {
+            // Chat riêng: chỉ nhận tin trao đổi giữa tôi và activeSelectedPeer
+            String peerId = activeSelectedPeer.getClientId();
+            boolean outgoing = myId.equals(msg.getSenderId()) && peerId.equals(msg.getTargetId());
+            boolean incoming = peerId.equals(msg.getSenderId()) && myId.equals(msg.getTargetId());
+            return msg.isDirect() && (outgoing || incoming);
         }
     }
 
@@ -224,9 +266,25 @@ public class ChatController {
         });
     }
 
-    // Đẩy tập tin kéo thả lên server để chia sẻ
+    // Mở hộp thoại chọn file đính kèm gửi vào cuộc trò chuyện hiện tại
+    @FXML
+    private void handleAttachFile() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("CHỌN TẬP TIN GỬI");
+        File file = chooser.showOpenDialog(chatScrollPane.getScene().getWindow());
+        if (file != null && file.exists()) {
+            stageAndSendDroppedFile(file);
+        }
+    }
+
+    // Đẩy tập tin kéo thả lên server để chia sẻ vào cuộc trò chuyện đang chọn
     private void stageAndSendDroppedFile(File file) {
         if (file != null && file.exists() && file.isFile()) {
+            if (FileTransferController.isImageFile(file.getName())) {
+                try {
+                    imageCache.put(file.getName(), new Image(file.toURI().toString()));
+                } catch (Exception ignored) {}
+            }
             String targetId = (activeSelectedPeer != null) ? activeSelectedPeer.getClientId() : ProtocolConstants.TARGET_ALL;
             fileTransferService.stageAndSendFile(file, targetId);
         }
@@ -248,7 +306,7 @@ public class ChatController {
         });
     }
 
-    // Lắng nghe danh sách tin nhắn để cập nhật lên giao diện
+    // Lắng nghe danh sách tin nhắn để cập nhật lên giao diện theo kênh đang mở
     private void setupChatStream() {
         chatService.getMessageHistory().addListener((ListChangeListener<Message>) change -> {
             while (change.next()) {
@@ -257,7 +315,9 @@ public class ChatController {
                 }
                 if (change.wasAdded()) {
                     for (Message msg : change.getAddedSubList()) {
-                        renderMessageCard(msg);
+                        if (isMessageBelongToActiveChannel(msg)) {
+                            renderMessageCard(msg);
+                        }
                     }
                 }
             }
@@ -303,14 +363,19 @@ public class ChatController {
         header.getChildren().addAll(senderLabel, targetTag, timeLabel);
         card.getChildren().add(header);
 
-        // Hiển thị nội dung tin nhắn (tin nhắn văn bản hoặc thông báo tệp đã chia sẻ)
-        String text = msg.isFileMessage() && msg.getFileInfo() != null
-                ? "🗎 [TẬP TIN ĐÃ CHIA SẺ] " + msg.getFileInfo().getFileName() + " (" + com.peerchat.shared.util.FileUtils.formatFileSize(msg.getFileInfo().getFileSize()) + ")"
-                : msg.getContent();
-        Label body = new Label(text);
-        body.getStyleClass().add("message-body");
-        body.setWrapText(true);
-        card.getChildren().add(body);
+        if (msg.isFileMessage() && msg.getFileInfo() != null) {
+            FileInfo fileInfo = msg.getFileInfo();
+            if (FileTransferController.isImageFile(fileInfo.getFileName())) {
+                renderImageCard(card, fileInfo);
+            } else {
+                renderFileCard(card, fileInfo);
+            }
+        } else {
+            Label body = new Label(msg.getContent());
+            body.getStyleClass().add("message-body");
+            body.setWrapText(true);
+            card.getChildren().add(body);
+        }
 
         row.getChildren().add(card);
         messagesContainer.getChildren().add(row);
@@ -320,6 +385,208 @@ public class ChatController {
             chatScrollPane.layout();
             chatScrollPane.setVvalue(1.0);
         });
+    }
+
+    // Hiển thị hình ảnh xem trước trực tiếp kèm nút tải về
+    private void renderImageCard(VBox card, FileInfo fileInfo) {
+        VBox imageBox = new VBox(6);
+        imageBox.getStyleClass().add("chat-image-box");
+
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(320);
+        imageView.setFitHeight(220);
+        imageView.setPreserveRatio(true);
+        imageView.setSmooth(true);
+        imageView.getStyleClass().add("chat-image-preview");
+
+        Label loadingLabel = new Label("⏳ ĐANG TẢI HÌNH ẢNH...");
+        loadingLabel.getStyleClass().add("file-card-meta");
+
+        File cacheFile = new File(CACHE_DIR, fileInfo.getFileId() + "_" + fileInfo.getFileName());
+
+        Image cachedImg = imageCache.get(fileInfo.getFileId());
+        if (cachedImg == null) {
+            cachedImg = imageCache.get(fileInfo.getFileName());
+        }
+
+        if (cachedImg != null) {
+            imageView.setImage(cachedImg);
+            imageBox.getChildren().add(imageView);
+        } else if (cacheFile.exists() && cacheFile.length() > 0) {
+            Image diskImg = new Image(cacheFile.toURI().toString());
+            imageCache.put(fileInfo.getFileId(), diskImg);
+            imageView.setImage(diskImg);
+            imageBox.getChildren().add(imageView);
+        } else {
+            imageBox.getChildren().add(loadingLabel);
+            fileTransferService.requestDownload(fileInfo, cacheFile, new FileTransferService.DownloadCallback() {
+                @Override
+                public void onProgress(double progress, long currentBytes, long totalBytes) {}
+
+                @Override
+                public void onComplete(boolean success, String hash, String error) {
+                    ClientUtils.runOnFxThread(() -> {
+                        if (success && cacheFile.exists()) {
+                            Image diskImg = new Image(cacheFile.toURI().toString());
+                            imageCache.put(fileInfo.getFileId(), diskImg);
+                            imageView.setImage(diskImg);
+                            imageBox.getChildren().remove(loadingLabel);
+                            if (!imageBox.getChildren().contains(imageView)) {
+                                imageBox.getChildren().add(0, imageView);
+                            }
+                        } else {
+                            loadingLabel.setText("❌ Không thể tải ảnh xem trước");
+                        }
+                    });
+                }
+            });
+        }
+
+        HBox metaRow = new HBox(8);
+        metaRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label nameLabel = new Label("🖼 " + fileInfo.getFileName() + " (" + com.peerchat.shared.util.FileUtils.formatFileSize(fileInfo.getFileSize()) + ")");
+        nameLabel.getStyleClass().add("file-card-title");
+        nameLabel.setMaxWidth(220);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button downloadBtn = new Button("⬇ TẢI VỀ");
+        downloadBtn.getStyleClass().add("file-card-btn");
+
+        downloadBtn.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("LƯU HÌNH ẢNH");
+            chooser.setInitialFileName(fileInfo.getFileName());
+            File dest = chooser.showSaveDialog(chatScrollPane.getScene().getWindow());
+
+            if (dest != null) {
+                if (cacheFile.exists() && cacheFile.length() > 0) {
+                    try {
+                        java.nio.file.Files.copy(cacheFile.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        downloadBtn.setText("📂 MỞ THƯ MỤC");
+                        downloadBtn.setOnAction(ev -> openDirectory(dest.getParentFile()));
+                    } catch (Exception ex) {
+                        downloadBtn.setText("LỖI LƯU");
+                    }
+                } else {
+                    downloadBtn.setDisable(true);
+                    downloadBtn.setText("ĐANG TẢI...");
+                    fileTransferService.requestDownload(fileInfo, dest, new FileTransferService.DownloadCallback() {
+                        @Override
+                        public void onProgress(double progress, long currentBytes, long totalBytes) {}
+
+                        @Override
+                        public void onComplete(boolean success, String hash, String error) {
+                            ClientUtils.runOnFxThread(() -> {
+                                if (success) {
+                                    downloadBtn.setText("📂 MỞ THƯ MỤC");
+                                    downloadBtn.setDisable(false);
+                                    downloadBtn.setOnAction(ev -> openDirectory(dest.getParentFile()));
+                                } else {
+                                    downloadBtn.setText("TẢI LẠI");
+                                    downloadBtn.setDisable(false);
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        metaRow.getChildren().addAll(nameLabel, spacer, downloadBtn);
+        card.getChildren().addAll(imageBox, metaRow);
+    }
+
+    // Hiển thị thẻ tập tin thông thường (tối giản, không icon nhãn rườm rà)
+    private void renderFileCard(VBox card, FileInfo fileInfo) {
+        VBox fileCard = new VBox(6);
+        fileCard.getStyleClass().add("file-card");
+
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label titleLabel = new Label("🗎 " + fileInfo.getFileName());
+        titleLabel.getStyleClass().add("file-card-title");
+        topRow.getChildren().add(titleLabel);
+
+        String hashShort = (fileInfo.getChecksum() != null && fileInfo.getChecksum().length() >= 12)
+                ? fileInfo.getChecksum().substring(0, 12) + "..."
+                : (fileInfo.getChecksum() != null ? fileInfo.getChecksum() : "N/A");
+        Label metaLabel = new Label("Dung lượng: " + com.peerchat.shared.util.FileUtils.formatFileSize(fileInfo.getFileSize())
+                + " | SHA-256: " + hashShort);
+        metaLabel.getStyleClass().add("file-card-meta");
+
+        ProgressBar downloadBar = new ProgressBar(0.0);
+        downloadBar.setPrefWidth(300);
+        downloadBar.setVisible(false);
+        downloadBar.setManaged(false);
+
+        Label statusLabel = new Label("LƯU TRỮ SẴN SÀNG TRÊN MÁY CHỦ");
+        statusLabel.getStyleClass().add("file-card-meta");
+
+        Button downloadBtn = new Button("⬇ TẢI VỀ");
+        downloadBtn.getStyleClass().add("file-card-btn");
+
+        downloadBtn.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("CHỌN NƠI LƯU TẬP TIN");
+            chooser.setInitialFileName(fileInfo.getFileName());
+            File dest = chooser.showSaveDialog(chatScrollPane.getScene().getWindow());
+
+            if (dest != null) {
+                downloadBtn.setDisable(true);
+                downloadBtn.setText("ĐANG TẢI...");
+                downloadBar.setVisible(true);
+                downloadBar.setManaged(true);
+                statusLabel.setText("Đang kết nối nhận dữ liệu từ máy chủ...");
+
+                fileTransferService.requestDownload(fileInfo, dest, new FileTransferService.DownloadCallback() {
+                    @Override
+                    public void onProgress(double progress, long currentBytes, long totalBytes) {
+                        ClientUtils.runOnFxThread(() -> {
+                            downloadBar.setProgress(progress);
+                            statusLabel.setText(String.format("Đã nhận: %s / %s (%.1f%%)",
+                                    com.peerchat.shared.util.FileUtils.formatFileSize(currentBytes),
+                                    com.peerchat.shared.util.FileUtils.formatFileSize(totalBytes),
+                                    progress * 100.0));
+                        });
+                    }
+
+                    @Override
+                    public void onComplete(boolean success, String hash, String error) {
+                        ClientUtils.runOnFxThread(() -> {
+                            if (success) {
+                                downloadBar.setProgress(1.0);
+                                statusLabel.setText("ĐÃ TẢI XONG // SHA-256 TOÀN VẸN 100%");
+                                statusLabel.getStyleClass().add("file-card-status-ok");
+                                downloadBtn.setText("📂 MỞ THƯ MỤC");
+                                downloadBtn.setDisable(false);
+                                downloadBtn.setOnAction(openEvent -> openDirectory(dest.getParentFile()));
+                            } else {
+                                statusLabel.setText("LỖI TẢI VỀ: " + (error != null ? error : "Lỗi dữ liệu"));
+                                statusLabel.getStyleClass().add("file-card-status-fail");
+                                downloadBtn.setText("TẢI LẠI");
+                                downloadBtn.setDisable(false);
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        fileCard.getChildren().addAll(topRow, metaLabel, downloadBar, statusLabel, downloadBtn);
+        card.getChildren().add(fileCard);
+    }
+
+    // Mở thư mục chứa tập tin trên máy tính
+    private void openDirectory(File dir) {
+        try {
+            if (dir != null && dir.exists()) {
+                java.awt.Desktop.getDesktop().open(dir);
+            }
+        } catch (Exception ignored) {}
     }
 
     // Đăng ký nhận các gói tin từ server và phân luồng xử lý

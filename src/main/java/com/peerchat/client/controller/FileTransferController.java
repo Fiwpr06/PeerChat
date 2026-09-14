@@ -64,17 +64,15 @@ public class FileTransferController {
                     HBox topRow = new HBox(6);
                     topRow.setAlignment(Pos.CENTER_LEFT);
 
-                    String badge = getFileTypeBadge(item.getFileName());
-                    String icon = getFileTypeIcon(badge);
-
-                    Label typeBadge = new Label(icon + " " + badge);
-                    typeBadge.getStyleClass().add("avatar-badge");
+                    String icon = getSimpleFileIcon(item.getFileName());
+                    Label iconLabel = new Label(icon);
+                    iconLabel.setStyle("-fx-font-size: 12px;");
 
                     Label nameLabel = new Label(item.getFileName());
                     nameLabel.setStyle("-fx-text-fill: #1c1b17; -fx-font-weight: bold; -fx-font-size: 11px;");
-                    nameLabel.setMaxWidth(160);
+                    nameLabel.setMaxWidth(180);
 
-                    topRow.getChildren().addAll(typeBadge, nameLabel);
+                    topRow.getChildren().addAll(iconLabel, nameLabel);
 
                     HBox bottomRow = new HBox(6);
                     bottomRow.setAlignment(Pos.CENTER_LEFT);
@@ -154,29 +152,16 @@ public class FileTransferController {
         }
     }
 
-    // Nhận diện loại tập tin dựa theo phần mở rộng
-    public static String getFileTypeBadge(String fileName) {
-        if (fileName == null) return "TẬP TIN";
+    // Kiểm tra định dạng tập tin có phải là hình ảnh hay không
+    public static boolean isImageFile(String fileName) {
+        if (fileName == null) return false;
         String lower = fileName.toLowerCase();
-        if (lower.endsWith(".pdf")) return "PDF";
-        if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".bmp")) return "ẢNH";
-        if (lower.endsWith(".zip") || lower.endsWith(".rar") || lower.endsWith(".7z") || lower.endsWith(".tar") || lower.endsWith(".gz")) return "NÉN";
-        if (lower.endsWith(".txt") || lower.endsWith(".doc") || lower.endsWith(".docx") || lower.endsWith(".rtf") || lower.endsWith(".md")) return "VĂN BẢN";
-        if (lower.endsWith(".java") || lower.endsWith(".py") || lower.endsWith(".c") || lower.endsWith(".cpp") || lower.endsWith(".js") || lower.endsWith(".html") || lower.endsWith(".css") || lower.endsWith(".json") || lower.endsWith(".xml")) return "CODE";
-        if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".avi")) return "MEDIA";
-        return "TẬP TIN";
+        return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+                || lower.endsWith(".gif") || lower.endsWith(".bmp") || lower.endsWith(".webp");
     }
 
-    // Gán icon biểu tượng cho từng loại tập tin
-    public static String getFileTypeIcon(String badge) {
-        return switch (badge) {
-            case "PDF" -> "📕";
-            case "ẢNH" -> "🖼";
-            case "NÉN" -> "📦";
-            case "VĂN BẢN" -> "📄";
-            case "CODE" -> "💻";
-            case "MEDIA" -> "🎬";
-            default -> "🗎";
-        };
+    // Biểu tượng đơn giản cho từng loại tập tin
+    public static String getSimpleFileIcon(String fileName) {
+        return isImageFile(fileName) ? "🖼" : "🗎";
     }
 }

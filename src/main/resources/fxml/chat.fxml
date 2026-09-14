@@ -71,7 +71,7 @@
                     </padding>
                     <Label text="Kênh nhắn tin:" styleClass="telemetry-label"/>
                     <Region prefWidth="10"/>
-                    <Label fx:id="channelTargetLabel" text="KÊNH CHUNG (TẤT CẢ PHÒNG)" styleClass="telemetry-value-cyan"/>
+                    <Label fx:id="channelTargetLabel" text="KÊNH CHUNG" styleClass="telemetry-value-cyan"/>
                 </HBox>
 
                 <!-- Danh sách tin nhắn cuộn (Hỗ trợ kéo thả tập tin trực tiếp) -->
@@ -83,11 +83,14 @@
                     </VBox>
                 </ScrollPane>
 
-                <!-- Ô nhập tin nhắn đa dòng và phím tắt Enter / Shift+Enter -->
+                <!-- Ô nhập tin nhắn, nút đính kèm tập tin và nút gửi -->
                 <HBox spacing="8" alignment="BOTTOM_CENTER">
+                    <Button fx:id="attachFileButton" text="📎 GỬI FILE" onAction="#handleAttachFile"
+                            styleClass="button" prefHeight="55.0" prefWidth="100.0"/>
                     <TextArea fx:id="messageInputField" promptText="Nhập tin nhắn (Enter: Gửi, Shift+Enter: Xuống dòng, Kéo thả file vào đây)..."
                               HBox.hgrow="ALWAYS" prefRowCount="2" maxHeight="70" wrapText="true"/>
-                    <Button fx:id="sendButton" text="GỬI" onAction="#handleSendMessage" styleClass="button-action" prefWidth="90.0" prefHeight="55.0"/>
+                    <Button fx:id="sendButton" text="GỬI" onAction="#handleSendMessage"
+                            styleClass="button-action" prefWidth="85.0" prefHeight="55.0"/>
                 </HBox>
             </VBox>
 

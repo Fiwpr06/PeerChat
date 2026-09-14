@@ -362,6 +362,19 @@
     -fx-border-width: 1px;
 }
 
+/* Khung hiển thị hình ảnh xem trước trực tiếp trong tin nhắn chat */
+.chat-image-box {
+    -fx-background-color: #d6d1bf;
+    -fx-border-color: #3e3b33;
+    -fx-border-width: 1px;
+    -fx-padding: 4px;
+    -fx-alignment: center;
+}
+
+.chat-image-preview {
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 4, 0, 0, 2);
+}
+
 /* Thẻ đính kèm file trong tin nhắn (NieR Style File Card) */
 .file-card {
     -fx-background-color: #ded9ca;
