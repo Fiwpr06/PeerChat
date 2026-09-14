@@ -25,9 +25,10 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
   - Server được trang bị giao diện đồ họa trực quan chuẩn phong cách **NieR:Automata**.
   - **Khối Mã Phòng Nổi Bật (Connection Code Box)**: Hiển thị mã kết nối 5 ký tự to rõ kèm **Nút bấm 1 chạm `[ 📋 SAO CHÉP MÃ ]`** (Copy to Clipboard) giúp sao chép mã phòng tức thì để gửi cho người khác hoặc dán vào Client.
   - Tự động hiển thị và cung cấp nút copy địa chỉ IP Localhost (`127.0.0.1`) và IP mạng LAN (`192.168.x.x`).
+  - **Nút Mở Nhanh Kho Lưu Trữ `[ 📂 MỞ KHO TẬP TIN ]`**: Cho phép mở trực tiếp thư mục lưu trữ tập tin `server_storage/` ngay từ chân trang giao diện máy chủ.
   - Bảng quản lý các Client đang kết nối thời gian thực và khung Console Log giám sát toàn bộ hoạt động.
   - Vẫn hỗ trợ chạy chế độ dòng lệnh thuần (CLI) khi thêm cờ `--cli` / `--nogui`.
-- **Bảo mật kết nối**: Client chỉ được phép vào phòng chat khi nhập đúng địa chỉ IP, cổng, mã phòng và tên hiển thị (Callsign). Ô nhập tên ở màn hình đăng nhập để trống, người dùng tự điền tên mong muốn.
+- **Bảo mật & Trải nghiệm kết nối chuẩn mực**: Client chỉ được phép vào phòng chat khi nhập đúng địa chỉ IP, cổng, mã phòng và tên hiển thị (Callsign). Tất cả mã lỗi (sai mã phòng, mất mạng, cổng sai) được chuyển ngữ thân thiện và hiển thị sắc nét; hỗ trợ ngắt kết nối an toàn có xác nhận và tự động quay về màn hình đăng nhập.
 
 ### 2.2. Đồng Bộ Danh Sách Người Dùng Thời Gian Thực
 - Server quản lý danh sách kết nối qua `ConnectionManager`.

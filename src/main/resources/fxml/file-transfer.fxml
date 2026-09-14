@@ -26,7 +26,7 @@
         <Button text="✕" onAction="#handleClosePanel" styleClass="button" prefWidth="26.0" prefHeight="22.0"/>
     </HBox>
 
-    <Label text="Kéo thả tập tin vào chat để tải lên" styleClass="telemetry-label"/>
+    <Label text="KÉO THẢ TẬP TIN VÀO CHAT ĐỂ TẢI LÊN" styleClass="telemetry-label"/>
 
     <!-- Danh sách file đã chia sẻ -->
     <ListView fx:id="sharedFilesListView" VBox.vgrow="ALWAYS"/>
@@ -37,13 +37,13 @@
             <Insets top="6" right="8" bottom="6" left="8"/>
         </padding>
         <HBox alignment="CENTER_LEFT">
-            <Label text="Tiến độ truyền tải:" styleClass="telemetry-label"/>
+            <Label text="TIẾN ĐỘ TRUYỀN TẢI:" styleClass="telemetry-label"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="speedLabel" text="0.0 KB/s" styleClass="telemetry-value-nominal"/>
         </HBox>
         <ProgressBar fx:id="transferProgressBar" progress="0.0" maxWidth="Infinity"/>
         <Label fx:id="statusLabel" text="SẴN SÀNG" styleClass="telemetry-label" wrapText="true"/>
-        <Label fx:id="checksumLabel" text="SHA-256: [Chờ truyền]" styleClass="telemetry-value-nominal" wrapText="true"/>
+        <Label fx:id="checksumLabel" text="Mã SHA-256: [Chờ truyền]" styleClass="telemetry-value-nominal" wrapText="true"/>
     </VBox>
 </VBox>
 

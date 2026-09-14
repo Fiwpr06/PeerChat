@@ -70,6 +70,8 @@ public class ServerController {
         setupLogCapture();
         startClock();
 
+        appendLog("[SẴN SÀNG] TRUNG TÂM ĐIỀU HÀNH MÁY CHỦ SẴN SÀNG...");
+
         // Tự động khởi động Server ngay khi mở giao diện
         handleToggleServer();
     }
@@ -91,7 +93,7 @@ public class ServerController {
             port = Integer.parseInt(portField.getText().trim());
             if (port <= 0 || port > 65535) throw new NumberFormatException();
         } catch (NumberFormatException e) {
-            appendLog("[ERROR] Cổng không hợp lệ (1-65535). Đặt lại 5000.");
+            appendLog("[CẢNH BÁO] Cổng không hợp lệ (1-65535). Đặt lại mặc định 5000.");
             port = 5000;
             portField.setText("5000");
         }
@@ -133,14 +135,16 @@ public class ServerController {
                 if (server.isRunning()) {
                     statusPillLabel.setText("ĐANG CHẠY");
                     statusPillLabel.getStyleClass().setAll("server-status-pill-running");
-                    serverToggleBtn.setText("⏹ DỪNG SERVER");
+                    serverToggleBtn.setText("⏹ DỪNG MÁY CHỦ");
                     serverToggleBtn.getStyleClass().setAll("button-danger");
                     portField.setDisable(true);
                     codeDisplayLabel.setText(server.getConnectionCode());
-                    appendLog("[SYSTEM] Server running on port " + server.getPort() + " with code: " + server.getConnectionCode());
+                    appendLog("[HỆ THỐNG] Máy chủ hoạt động trên cổng " + server.getPort() + " | Mã kết nối: " + server.getConnectionCode());
                     updateStats();
                 } else {
-                    appendLog("[ERROR] Could not start server on port " + server.getPort());
+                    statusPillLabel.setText("LỖI KHỞI ĐỘNG");
+                    statusPillLabel.getStyleClass().setAll("server-status-pill-stopped");
+                    appendLog("[LỖI] Không thể khởi chạy máy chủ trên cổng " + server.getPort() + ". Cổng có thể đang bị chiếm dụng, hãy thử cổng khác (ví dụ: 5001).");
                 }
             });
         }).start();
@@ -155,12 +159,12 @@ public class ServerController {
         clientRows.clear();
         statusPillLabel.setText("ĐANG DỪNG");
         statusPillLabel.getStyleClass().setAll("server-status-pill-stopped");
-        serverToggleBtn.setText("▶ KHỞI ĐỘNG SERVER");
+        serverToggleBtn.setText("▶ KHỞI ĐỘNG MÁY CHỦ");
         serverToggleBtn.getStyleClass().setAll("button-action");
         portField.setDisable(false);
         codeDisplayLabel.setText("-----");
         updateStats();
-        appendLog("[SYSTEM] Server has been stopped.");
+        appendLog("[HỆ THỐNG] Máy chủ đã dừng hoạt động. Đã đóng toàn bộ kết nối.");
     }
 
     // Sao chép mã phòng vào Clipboard của hệ điều hành
@@ -193,7 +197,22 @@ public class ServerController {
         ClientRow selected = clientsTableView.getSelectionModel().getSelectedItem();
         if (selected != null && server != null) {
             server.getConnectionManager().removeClient(selected.clientId());
-            appendLog("[ADMIN] Đã ngắt kết nối client: " + selected.name() + " (" + selected.address() + ")");
+            appendLog("[QUẢN TRỊ] ĐÃ NGẮT LIÊN LẠC VỚI MÁY KHÁCH: " + selected.name() + " [" + selected.address() + "]");
+        }
+    }
+
+    // Mở nhanh thư mục lưu trữ tập tin của máy chủ trên Windows Explorer
+    @FXML
+    private void handleOpenStorageFolder() {
+        try {
+            File storageDir = new File("server_storage");
+            if (!storageDir.exists()) {
+                storageDir.mkdirs();
+            }
+            java.awt.Desktop.getDesktop().open(storageDir);
+            appendLog("[QUẢN TRỊ] Đã mở thư mục kho lưu trữ máy chủ: server_storage/");
+        } catch (Exception e) {
+            appendLog("[LỖI] Không thể mở thư mục lưu trữ: " + e.getMessage());
         }
     }
 
@@ -241,8 +260,8 @@ public class ServerController {
     // Cập nhật số liệu thống kê ở chân trang
     private void updateStats() {
         int count = clientRows.size();
-        clientCountLabel.setText(count + " NODES");
-        footerClientsLabel.setText("Nodes: " + count + " trực tuyến");
+        clientCountLabel.setText(count + " MÁY");
+        footerClientsLabel.setText("Máy khách: " + count + " trực tuyến");
 
         File storageDir = new File("server_storage");
         int fileCount = 0;
@@ -261,7 +280,7 @@ public class ServerController {
     // Đồng hồ hệ thống thời gian thực
     private void startClock() {
         clockTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            serverClockLabel.setText("GIỜ HT: " + LocalDateTime.now().format(TIME_FORMAT));
+            serverClockLabel.setText("GIỜ HỆ THỐNG: " + LocalDateTime.now().format(TIME_FORMAT));
         }));
         clockTimeline.setCycleCount(Animation.INDEFINITE);
         clockTimeline.play();

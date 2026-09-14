@@ -20,7 +20,7 @@ public class ServerApp extends Application {
 
         Scene scene = new Scene(root, 960, 650);
         stage.setScene(scene);
-        stage.setTitle("PEERCHAT // MÁY CHỦ TRUNG TÂM (SERVER COMMAND CENTER)");
+        stage.setTitle("PeerChat - Trung tâm điều hành máy chủ");
         stage.setMinWidth(750);
         stage.setMinHeight(500);
 

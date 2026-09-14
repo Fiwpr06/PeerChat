@@ -75,6 +75,7 @@ public class ChatController {
     @FXML private ListView<ClientInfo> peersListView;
     @FXML private ScrollPane chatScrollPane;
     @FXML private VBox messagesContainer;
+    @FXML private HBox disconnectBanner;
     @FXML private Button attachFileButton;
     @FXML private TextArea messageInputField;
     @FXML private Button sendButton;
@@ -132,7 +133,7 @@ public class ChatController {
         chatService.getOnlinePeers().addListener((ListChangeListener<ClientInfo>) c -> {
             rebuildDisplayPeers();
             int count = chatService.getOnlinePeers().size();
-            peerCountLabel.setText(count + " NGƯỜI DÙNG ONLINE");
+            peerCountLabel.setText(count + " NGƯỜI TRỰC TUYẾN");
         });
 
         // Định dạng hiển thị từng dòng người dùng
@@ -179,7 +180,7 @@ public class ChatController {
                 channelTargetLabel.setText("KÊNH CHUNG");
             } else {
                 activeSelectedPeer = newVal;
-                channelTargetLabel.setText("CHAT RIÊNG VỚI // " + newVal.getDisplayName() + " [" + newVal.getCoordinates() + "]");
+                channelTargetLabel.setText("TRÒ CHUYỆN RIÊNG VỚI: " + newVal.getDisplayName() + " [" + newVal.getCoordinates() + "]");
             }
             reloadMessagesForActiveChannel();
         });
@@ -438,7 +439,7 @@ public class ChatController {
                                 imageBox.getChildren().add(0, imageView);
                             }
                         } else if ("FILE_NOT_FOUND".equals(error)) {
-                            loadingLabel.setText("❌ HÌNH ẢNH ĐÃ BỊ XÓA HOẶC KHÔNG TỒN TẠI TRÊN MÁY CHỦ");
+                            loadingLabel.setText("[ DỮ LIỆU ĐÃ MẤT ] HÌNH ẢNH KHÔNG CÒN TỒN TẠI TRÊN MÁY CHỦ");
                             downloadBtn.setText("FILE ĐÃ MẤT");
                             downloadBtn.setDisable(true);
                         } else {
@@ -566,13 +567,13 @@ public class ChatController {
                         ClientUtils.runOnFxThread(() -> {
                             if (success) {
                                 downloadBar.setProgress(1.0);
-                                statusLabel.setText("ĐÃ TẢI XONG // SHA-256 TOÀN VẸN 100%");
+                                statusLabel.setText("ĐÃ TẢI XONG (Mã SHA-256 toàn vẹn 100%)");
                                 statusLabel.getStyleClass().add("file-card-status-ok");
                                 downloadBtn.setText("📂 MỞ THƯ MỤC");
                                 downloadBtn.setDisable(false);
                                 downloadBtn.setOnAction(openEvent -> openDirectory(dest.getParentFile()));
                             } else if ("FILE_NOT_FOUND".equals(error)) {
-                                statusLabel.setText("TẬP TIN ĐÃ MẤT // KHÔNG CÒN TRÊN MÁY CHỦ");
+                                statusLabel.setText("[ DỮ LIỆU ĐÃ MẤT ] TẬP TIN KHÔNG CÒN TRÊN MÁY CHỦ");
                                 statusLabel.getStyleClass().add("file-card-status-fail");
                                 downloadBtn.setText("FILE ĐÃ MẤT");
                                 downloadBtn.setDisable(true);
@@ -637,10 +638,17 @@ public class ChatController {
             @Override
             public void onConnectionLost(String reason) {
                 ClientUtils.runOnFxThread(() -> {
-                    carrierStatusLabel.setText("MẤT KẾT NỐI");
+                    carrierStatusLabel.setText("[ MẤT LIÊN LẠC ] MÁY CHỦ ĐÃ NGẮT KẾT NỐI");
                     carrierStatusLabel.setStyle("-fx-text-fill: #b8522e; -fx-font-weight: bold;");
-                    ClientUtils.showAlert(Alert.AlertType.ERROR, "PEERCHAT // MẤT KẾT NỐI",
-                            "KẾT NỐI BỊ NGẮT", reason);
+
+                    messageInputField.setDisable(true);
+                    sendButton.setDisable(true);
+                    attachFileButton.setDisable(true);
+
+                    if (disconnectBanner != null) {
+                        disconnectBanner.setVisible(true);
+                        disconnectBanner.setManaged(true);
+                    }
                 });
             }
         });
@@ -678,9 +686,8 @@ public class ChatController {
         messageInputField.requestFocus();
     }
 
-    // Ngắt kết nối và đóng cửa sổ
-    @FXML
-    private void handleDisconnect() {
+    // Giải phóng kết nối an toàn
+    private void cleanupConnection() {
         if (messageSender != null) {
             try {
                 messageSender.sendSync(new ProtocolMessage(MessageType.DISCONNECT, new byte[0]));
@@ -692,9 +699,39 @@ public class ChatController {
         if (clockTimeline != null) {
             clockTimeline.stop();
         }
+    }
 
-        Stage stage = (Stage) nodeCallsignLabel.getScene().getWindow();
-        stage.close();
+    // Quay trở về màn hình đăng nhập
+    @FXML
+    private void handleReturnToConnect() {
+        cleanupConnection();
+        ClientUtils.runOnFxThread(() -> {
+            try {
+                javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/connect.fxml"));
+                javafx.scene.Parent root = loader.load();
+
+                Stage stage = (Stage) nodeCallsignLabel.getScene().getWindow();
+                javafx.scene.Scene scene = new javafx.scene.Scene(root, 720, 540);
+                stage.setScene(scene);
+                stage.setTitle("PeerChat - Hệ thống giao tiếp và truyền tệp");
+                stage.centerOnScreen();
+            } catch (Exception e) {
+                System.err.println("Lỗi chuyển về màn hình đăng nhập: " + e.getMessage());
+            }
+        });
+    }
+
+    // Ngắt kết nối có hộp thoại xác nhận và chuyển hướng về sảnh
+    @FXML
+    private void handleDisconnect() {
+        java.util.Optional<ButtonType> result = ClientUtils.showConfirmation(
+                "PeerChat - Xác nhận ngắt kết nối",
+                "NGẮT LIÊN LẠC MÁY CHỦ",
+                "Bạn có chắc chắn muốn ngắt kết nối và quay về màn hình đăng nhập không?"
+        );
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            handleReturnToConnect();
+        }
     }
 
     // Đồng hồ hệ thống thời gian thực

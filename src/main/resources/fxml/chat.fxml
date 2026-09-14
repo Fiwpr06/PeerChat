@@ -24,13 +24,13 @@
             <padding>
                 <Insets top="8" right="16" bottom="8" left="16"/>
             </padding>
-            <Label text="PEERCHAT // GIAO TIẾP VÀ TRUYỀN FILE" styleClass="hud-title"/>
+            <Label text="PEERCHAT - HỆ THỐNG GIAO TIẾP VÀ TRUYỀN TỆP" styleClass="hud-title"/>
             <Region HBox.hgrow="ALWAYS"/>
 
-            <Label text="Tên của bạn:" styleClass="telemetry-label"/>
-            <Label fx:id="nodeCallsignLabel" text="OPERATOR" styleClass="telemetry-value-cyan"/>
+            <Label text="Bí danh:" styleClass="telemetry-label"/>
+            <Label fx:id="nodeCallsignLabel" text="NGƯỜI DÙNG" styleClass="telemetry-value-cyan"/>
 
-            <Label text="Server:" styleClass="telemetry-label"/>
+            <Label text="Máy chủ:" styleClass="telemetry-label"/>
             <Label fx:id="serverCoordinatesLabel" text="127.0.0.1:5000" styleClass="telemetry-value-nominal"/>
 
             <Label text="Trạng thái:" styleClass="telemetry-label"/>
@@ -50,7 +50,7 @@
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="[ ONLINE ]" styleClass="panel-header"/>
+                    <Label text="[ TRỰC TUYẾN ]" styleClass="panel-header"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="peerCountLabel" text="0" styleClass="telemetry-value-nominal"/>
                 </HBox>
@@ -69,9 +69,19 @@
                     <padding>
                         <Insets top="6" right="10" bottom="6" left="10"/>
                     </padding>
-                    <Label text="Kênh nhắn tin:" styleClass="telemetry-label"/>
+                    <Label text="Kênh trò chuyện:" styleClass="telemetry-label"/>
                     <Region prefWidth="10"/>
                     <Label fx:id="channelTargetLabel" text="KÊNH CHUNG" styleClass="telemetry-value-cyan"/>
+                </HBox>
+
+                <!-- Banner thông báo khi mất kết nối -->
+                <HBox fx:id="disconnectBanner" visible="false" managed="false" alignment="CENTER_LEFT" spacing="12" styleClass="disconnect-warning-banner">
+                    <padding>
+                        <Insets top="6" right="12" bottom="6" left="12"/>
+                    </padding>
+                    <Label text="⚠ [ MẤT LIÊN LẠC ] MÁY CHỦ ĐÃ NGẮT KẾT NỐI" styleClass="disconnect-banner-text"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="🚪 VỀ MÀN HÌNH ĐĂNG NHẬP" onAction="#handleReturnToConnect" styleClass="button"/>
                 </HBox>
 
                 <!-- Danh sách tin nhắn cuộn (Hỗ trợ kéo thả tập tin trực tiếp) -->
@@ -85,9 +95,9 @@
 
                 <!-- Ô nhập tin nhắn, nút đính kèm tập tin và nút gửi -->
                 <HBox spacing="8" alignment="BOTTOM_CENTER">
-                    <Button fx:id="attachFileButton" text="📎 GỬI FILE" onAction="#handleAttachFile"
+                    <Button fx:id="attachFileButton" text="📎 GỬI TỆP" onAction="#handleAttachFile"
                             styleClass="button" prefHeight="55.0" prefWidth="125.0" minWidth="120.0"/>
-                    <TextArea fx:id="messageInputField" promptText="Nhập tin nhắn (Enter: Gửi, Shift+Enter: Xuống dòng, Kéo thả file vào đây)..."
+                    <TextArea fx:id="messageInputField" promptText="Soạn tin nhắn... [Enter: Gửi | Shift+Enter: Xuống dòng | Kéo thả tệp]"
                               HBox.hgrow="ALWAYS" prefRowCount="2" maxHeight="70" wrapText="true"/>
                     <Button fx:id="sendButton" text="GỬI" onAction="#handleSendMessage"
                             styleClass="button-action" prefWidth="85.0" prefHeight="55.0"/>
@@ -105,8 +115,8 @@
             <padding>
                 <Insets top="6" right="16" bottom="6" left="16"/>
             </padding>
-            <Label text="Trạng thái: Ổn định" styleClass="telemetry-value-nominal"/>
-            <Label text="Bảo toàn dữ liệu: SHA-256 Checksum" styleClass="telemetry-label"/>
+            <Label text="LIÊN LẠC: BÌNH THƯỜNG" styleClass="telemetry-value-nominal"/>
+            <Label text="Toàn vẹn dữ liệu: Mã băm SHA-256" styleClass="telemetry-label"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="systemClockLabel" text="00:00:00" styleClass="telemetry-label"/>
         </HBox>

@@ -38,7 +38,7 @@ public class ConnectController {
         String name = nameField.getText().trim();
 
         if (host.isEmpty()) {
-            statusLabel.setText("Lỗi: Địa chỉ IP/Host không được để trống.");
+            statusLabel.setText("[ CẢNH BÁO ] ĐỊA CHỈ MÁY CHỦ KHÔNG ĐƯỢC ĐỂ TRỐNG");
             return;
         }
 
@@ -47,22 +47,22 @@ public class ConnectController {
             port = Integer.parseInt(portStr);
             if (port <= 0 || port > 65535) throw new NumberFormatException();
         } catch (NumberFormatException e) {
-            statusLabel.setText("Lỗi: Cổng không hợp lệ (1 - 65535).");
+            statusLabel.setText("[ CẢNH BÁO ] CỔNG KẾT NỐI KHÔNG HỢP LỆ (1 - 65535)");
             return;
         }
 
         if (code.isEmpty()) {
-            statusLabel.setText("Lỗi: Vui lòng nhập mã phòng 5 ký tự.");
+            statusLabel.setText("[ CẢNH BÁO ] VUI LÒNG NHẬP MÃ KẾT NỐI 5 KÝ TỰ");
             return;
         }
 
         if (name.isEmpty()) {
-            statusLabel.setText("Lỗi: Vui lòng nhập tên hiển thị.");
+            statusLabel.setText("[ CẢNH BÁO ] VUI LÒNG THIẾT LẬP BÍ DANH");
             return;
         }
 
         connectButton.setDisable(true);
-        statusLabel.setText("Đang kết nối đến máy chủ...");
+        statusLabel.setText("[ ĐANG KẾT NỐI ] TRUY TÌM TÍN HIỆU MÁY CHỦ...");
 
         // Kết nối bất đồng bộ để tránh đơ giao diện
         new Thread(() -> {
@@ -99,7 +99,11 @@ public class ConnectController {
                 if (!success) {
                     clientSocket.disconnect();
                     ClientUtils.runOnFxThread(() -> {
-                        statusLabel.setText("Từ chối: " + (serverMsg != null ? serverMsg : "Mã phòng không đúng"));
+                        String displayMsg = "[ TỪ CHỐI ] MÃ KẾT NỐI KHÔNG HỢP LỆ HOẶC ĐÃ HẾT HẠN";
+                        if (serverMsg != null && !serverMsg.contains("ACCESS_DENIED") && !serverMsg.isEmpty()) {
+                            displayMsg = "[ TỪ CHỐI ] " + serverMsg;
+                        }
+                        statusLabel.setText(displayMsg);
                         connectButton.setDisable(false);
                     });
                     return;
@@ -125,11 +129,11 @@ public class ConnectController {
                         Stage stage = (Stage) connectButton.getScene().getWindow();
                         Scene scene = new Scene(root, 1080, 720);
                         stage.setScene(scene);
-                        stage.setTitle("PEERCHAT // " + name + " [" + host + ":" + port + "]");
+                        stage.setTitle("PeerChat - " + name + " [" + host + ":" + port + "]");
                         stage.centerOnScreen();
 
                     } catch (IOException e) {
-                        statusLabel.setText("Lỗi mở giao diện chat: " + e.getMessage());
+                        statusLabel.setText("[ LỖI HỆ THỐNG ] KHÔNG THỂ KHỞI TẠO KHUNG CHAT: " + e.getMessage());
                         connectButton.setDisable(false);
                     }
                 });
@@ -137,7 +141,18 @@ public class ConnectController {
             } catch (IOException e) {
                 clientSocket.disconnect();
                 ClientUtils.runOnFxThread(() -> {
-                    statusLabel.setText("Lỗi kết nối: " + e.getMessage());
+                    String rawMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+                    String friendlyError;
+                    if (rawMsg.contains("refused") || rawMsg.contains("cannot connect") || rawMsg.contains("failed to connect")) {
+                        friendlyError = "[ LỖI KẾT NỐI ] KHÔNG THỂ KẾT NỐI MÁY CHỦ (Kiểm tra lại IP, cổng hoặc máy chủ đã bật chưa)";
+                    } else if (rawMsg.contains("timed out") || rawMsg.contains("timeout")) {
+                        friendlyError = "[ HẾT HẠN ] KẾT NỐI QUÁ THỜI GIAN (Mạng chậm hoặc sai địa chỉ IP)";
+                    } else if (e instanceof java.net.UnknownHostException) {
+                        friendlyError = "[ LỖI ĐỊA CHỈ ] KHÔNG TÌM THẤY MÁY CHỦ (Kiểm tra lại địa chỉ IP)";
+                    } else {
+                        friendlyError = "[ LỖI MẠNG ] " + (e.getMessage() != null ? e.getMessage() : "Không thể kết nối đến máy chủ");
+                    }
+                    statusLabel.setText(friendlyError);
                     connectButton.setDisable(false);
                 });
             }

@@ -18,7 +18,7 @@ public class Main extends Application {
 
         Scene scene = new Scene(root, 720, 540);
 
-        primaryStage.setTitle("PEERCHAT // YORHA SYSTEM TERMINAL");
+        primaryStage.setTitle("PeerChat - Hệ thống giao tiếp và truyền tệp");
         primaryStage.setScene(scene);
         primaryStage.setMinWidth(640);
         primaryStage.setMinHeight(480);

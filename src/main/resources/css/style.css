@@ -499,24 +499,78 @@
 }
 
 /* ==========================================================================
-   HỘP THOẠI DIALOG (POPUP XÁC NHẬN)
+   HỘP THOẠI DIALOG (POPUP XÁC NHẬN CHUẨN NIER:AUTOMATA)
    ========================================================================== */
 
 .terminal-dialog {
     -fx-background-color: #ebe7da;
-    -fx-border-color: #25241e;
+    -fx-border-color: #4b473b;
     -fx-border-width: 2px;
 }
 
 .terminal-dialog > .header-panel {
-    -fx-background-color: #25241e;
-    -fx-border-color: #3e3b33;
-    -fx-border-width: 0 0 1px 0;
+    -fx-background-color: #c8c3b0;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 0 0 2px 0;
+    -fx-padding: 10px 14px;
 }
 
-.terminal-dialog .label {
+.terminal-dialog > .header-panel .label {
     -fx-text-fill: #1c1b17;
     -fx-font-family: "Consolas", "Segoe UI", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.terminal-dialog .content {
+    -fx-background-color: #ebe7da;
+    -fx-padding: 14px;
+}
+
+.terminal-dialog .content.label {
+    -fx-text-fill: #2c2923;
+    -fx-font-family: "Consolas", "Segoe UI", monospace;
+    -fx-font-size: 12px;
+}
+
+.terminal-dialog .button-bar {
+    -fx-background-color: #dfdbce;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 8px 14px;
+}
+
+.terminal-dialog .button-bar .button {
+    -fx-background-color: #ddd8c8;
+    -fx-background-radius: 0px;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 1px;
+    -fx-text-fill: #1c1b17;
+    -fx-font-family: "Consolas", "Segoe UI", monospace;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+    -fx-padding: 5px 14px;
+}
+
+.terminal-dialog .button-bar .button:hover {
+    -fx-background-color: #25241e;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #25241e;
+}
+
+/* Banner cảnh báo khi mất kết nối */
+.disconnect-warning-banner {
+    -fx-background-color: #b8522e;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 1px;
+    -fx-padding: 6px 12px;
+}
+
+.disconnect-banner-text {
+    -fx-text-fill: #ffffff;
+    -fx-font-family: "Consolas", "Segoe UI", monospace;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
 }
 
 /* ==========================================================================

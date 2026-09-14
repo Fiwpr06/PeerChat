@@ -241,14 +241,14 @@ public class FileTransferService {
                 ClientUtils.runOnFxThread(() -> {
                     if (match) {
                         state.set(TransferState.COMPLETED);
-                        statusText.set("ĐÃ TẢI XONG // SHA-256 TOÀN VẸN 100%");
+                        statusText.set("[ TẢI THÀNH CÔNG ] Mã SHA-256 toàn vẹn 100%");
                         checksumResult.set("THÀNH CÔNG: " + localHash.substring(0, Math.min(16, localHash.length())) + "...");
                         if (session.callback != null) {
                             session.callback.onComplete(true, localHash, null);
                         }
                     } else {
                         state.set(TransferState.FAILED);
-                        statusText.set("DỮ LIỆU BỊ LỖI // SHA-256 KHÔNG KHỚP");
+                        statusText.set("[ CẢNH BÁO ] DỮ LIỆU BỊ HỎNG (Mã SHA-256 không trùng khớp)");
                         checksumResult.set("LỖI MÃ BĂM");
                         if (session.callback != null) {
                             session.callback.onComplete(false, localHash, "SHA-256 không khớp");
@@ -281,7 +281,7 @@ public class FileTransferService {
                 }
                 ClientUtils.runOnFxThread(() -> {
                     state.set(TransferState.FAILED);
-                    statusText.set("TẬP TIN ĐÃ MẤT // KHÔNG CÒN TRÊN MÁY CHỦ");
+                    statusText.set("[ DỮ LIỆU ĐÃ MẤT ] TẬP TIN KHÔNG CÒN TRÊN MÁY CHỦ");
                     checksumResult.set("FILE KHÔNG TỒN TẠI");
                     if (session.callback != null) {
                         session.callback.onComplete(false, null, "FILE_NOT_FOUND");
@@ -294,11 +294,11 @@ public class FileTransferService {
         ClientUtils.runOnFxThread(() -> {
             if ("VERIFIED".equalsIgnoreCase(info.getChecksum())) {
                 state.set(TransferState.COMPLETED);
-                statusText.set("MÁY CHỦ ĐÃ LƯU TRỮ // ĐÃ PHÁT VÀO PHÒNG CHAT");
+                statusText.set("[ MÁY CHỦ ĐÃ LƯU TRỮ ] PHÁT TẬP TIN VÀO KÊNH THÀNH CÔNG");
                 checksumResult.set("XÁC THỰC MÃ BĂM: THÀNH CÔNG");
             } else {
                 state.set(TransferState.FAILED);
-                statusText.set("MÁY CHỦ BÁO CÁO FILE BỊ LỖI MÃ BĂM");
+                statusText.set("[ TỪ CHỐI ] MÁY CHỦ BÁO CÁO SAI LỆCH MÃ BĂM SHA-256");
                 checksumResult.set("XÁC THỰC MÃ BĂM: THẤT BẠI");
             }
         });

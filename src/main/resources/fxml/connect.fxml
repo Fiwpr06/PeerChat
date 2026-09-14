@@ -20,7 +20,7 @@
             <padding>
                 <Insets top="10" right="16" bottom="10" left="16"/>
             </padding>
-            <Label text="PEERCHAT // HỆ THỐNG GIAO TIẾP &amp; TRUYỀN FILE" styleClass="hud-title"/>
+            <Label text="PEERCHAT - HỆ THỐNG GIAO TIẾP VÀ TRUYỀN TỆP" styleClass="hud-title"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label text="GIAO THỨC:" styleClass="telemetry-label"/>
             <Label text="TCP SOCKET" styleClass="telemetry-value-nominal"/>
@@ -36,42 +36,42 @@
                 </padding>
 
                 <!-- Tiêu đề form -->
-                <Label text="[ XÁC THỰC KẾT NỐI SERVER ]" styleClass="panel-header"/>
-                <Label text="Nhập địa chỉ IP, cổng và mã phiên do Server cung cấp để kết nối." styleClass="telemetry-label"/>
+                <Label text="[ XÁC THỰC KẾT NỐI MÁY CHỦ ]" styleClass="panel-header"/>
+                <Label text="Nhập địa chỉ IP, cổng và mã phòng do máy chủ cung cấp để kết nối." styleClass="telemetry-label"/>
 
                 <!-- Địa chỉ IP / Host -->
                 <VBox spacing="4">
-                    <Label text="Địa chỉ IP Server (Localhost / LAN):" styleClass="telemetry-label"/>
-                    <TextField fx:id="hostField" promptText="127.0.0.1" text="127.0.0.1"/>
+                    <Label text="Địa chỉ IP máy chủ (Cục bộ / Mạng LAN):" styleClass="telemetry-label"/>
+                    <TextField fx:id="hostField" promptText="127.0.0.1 (hoặc IP mạng LAN)" text="127.0.0.1"/>
                 </VBox>
 
                 <!-- Cổng Port -->
                 <VBox spacing="4">
-                    <Label text="Cổng Port (Mặc định: 5000):" styleClass="telemetry-label"/>
+                    <Label text="Cổng kết nối (Mặc định: 5000):" styleClass="telemetry-label"/>
                     <TextField fx:id="portField" promptText="5000" text="5000"/>
                 </VBox>
 
                 <!-- Mã kết nối Connection Code -->
                 <VBox spacing="4">
-                    <Label text="Mã kết nối Server (Connection Code 5 ký tự):" styleClass="telemetry-label"/>
-                    <TextField fx:id="codeField" promptText="Nhập mã từ console Server (ví dụ: A7X2K)"/>
+                    <Label text="Mã kết nối phòng (5 ký tự):" styleClass="telemetry-label"/>
+                    <TextField fx:id="codeField" promptText="Nhập mã kết nối 5 ký tự (ví dụ: KMH67)..."/>
                 </VBox>
 
                 <!-- Tên hiển thị -->
                 <VBox spacing="4">
-                    <Label text="Tên hiển thị (Display Name):" styleClass="telemetry-label"/>
-                    <TextField fx:id="nameField" promptText="Nhập tên của bạn (ví dụ: Operator, 2B, 9S...)"/>
+                    <Label text="Tên hiển thị (Bí danh):" styleClass="telemetry-label"/>
+                    <TextField fx:id="nameField" promptText="Nhập bí danh của bạn (ví dụ: An, Bình, Minh)..."/>
                 </VBox>
 
                 <!-- Trạng thái kết nối -->
-                <Label fx:id="statusLabel" text="Sẵn sàng kết nối..." styleClass="telemetry-value-cyan" wrapText="true"/>
+                <Label fx:id="statusLabel" text="[ TRẠNG THÁI ] CHỜ THIẾT LẬP KẾT NỐI..." styleClass="telemetry-value-cyan" wrapText="true"/>
 
                 <!-- Nút kết nối -->
                 <HBox spacing="10" alignment="CENTER_RIGHT">
                     <padding>
                         <Insets top="6"/>
                     </padding>
-                    <Button fx:id="connectButton" text="KẾT NỐI SERVER" onAction="#handleConnect"
+                    <Button fx:id="connectButton" text="KẾT NỐI MÁY CHỦ" onAction="#handleConnect"
                             styleClass="button-action" defaultButton="true" prefWidth="200.0"/>
                 </HBox>
             </VBox>
@@ -84,9 +84,9 @@
             <padding>
                 <Insets top="6" right="16" bottom="6" left="16"/>
             </padding>
-            <Label text="Mô hình: Client-Server TCP Socket" styleClass="telemetry-label"/>
+            <Label text="Mô hình: Máy khách - Máy chủ TCP" styleClass="telemetry-label"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label text="Đồ án Network Programming" styleClass="telemetry-label"/>
+            <Label text="Trạng thái: Sẵn sàng | Giao thức: TCP/IP" styleClass="telemetry-label"/>
         </HBox>
     </bottom>
 </BorderPane>
