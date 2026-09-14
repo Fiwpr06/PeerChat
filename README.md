@@ -29,16 +29,20 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
 - Server quản lý danh sách kết nối qua `ConnectionManager`.
 - Khi có một Client mới tham gia hoặc ngắt kết nối (kể cả trường hợp tắt đột ngột/mất mạng), Server tự động phát hiện, dọn dẹp tài nguyên và gửi thông điệp `CLIENT_LIST_UPDATE` cập nhật tức thì đến toàn bộ người dùng còn lại.
 
-### 2.3. Nhắn Tin Đa Kênh (Broadcast & Direct 1-1)
+### 2.3. Nhắn Tin Đa Kênh & Bong Bóng Chat Chuẩn UX
 - **Chat chung (Broadcast)**: Gửi tin nhắn đến toàn bộ người dùng trong phòng.
 - **Chat riêng (Direct 1-1)**: Chỉ cần nhấp chọn tên một người dùng trên danh sách online bên trái; tin nhắn sẽ được Server định tuyến trực tiếp duy nhất đến người đó một cách an toàn.
-- Khung chat phân biệt màu sắc thẻ tin nhắn gửi đi (YoRHa Ochre `#B85633`) và tin nhắn nhận về (Muted Slate Taupe `#5A7382`) cùng thời gian thực gửi tin.
+- **Phân biệt gửi / nhận trực quan**:
+  - Tin nhắn của mình: Căn lề **PHẢI**, viền gạch nung YoRHa Ochre (`#B8522E`), tên "BẠN [Callsign]".
+  - Tin nhắn của người khác: Căn lề **TRÁI**, kèm **Avatar huy hiệu chữ cái đầu** (`[A]`, `[B]`) màu xám than NieR (`#35332B`), tên người gửi màu xanh đá phiến (`#2B4A62`).
+- **Đồng bộ lịch sử tin nhắn (Late Joiner Sync)**: Người tham gia phòng sau vẫn nhìn thấy toàn bộ tin nhắn và các tập tin được chia sẻ trước đó nhờ bộ đệm vòng In-Memory (100 tin gần nhất) lưu trên RAM của Server (hoàn toàn không cần Database).
 
-### 2.4. Truyền File Nhị Phân & Đối Soát SHA-256
-- **Chia nhỏ khối dữ liệu (Chunking)**: File được chia nhỏ thành các chunk 64 KB (`CHUNK_SIZE`), đọc và stream qua Socket bằng bộ đệm tĩnh giúp tiết kiệm bộ nhớ RAM, truyền được cả các file dung lượng lớn.
-- **Xác nhận hai chiều (Handshake)**: Client gửi yêu cầu (`FILE_REQUEST`), Client nhận hiển thị hộp thoại xác nhận và tự chọn nơi lưu file (`FILE_ACCEPT` / `FILE_REJECT`).
-- **Giám sát thời gian thực**: Hiển thị thanh tiến trình (% hoàn thành), tốc độ truyền tải thực tế (KB/s, MB/s) và nút hủy truyền file (`ABORT`).
-- **Toàn vẹn dữ liệu**: Tính mã băm SHA-256 dạng stream ở cả hai đầu gửi và nhận. Khi hoàn tất, hệ thống tự động so khớp và hiển thị kết quả kiểm tra toàn vẹn (`KHỚP [OK]`).
+### 2.4. Lưu Trữ & Truyền File Store-and-Forward Qua Server
+- **Mô hình Store-and-Forward**: Người gửi tải file lên thư mục lưu trữ tạm của Server (`server_storage/`), Server xác thực mã băm SHA-256 rồi phát thông báo chia sẻ file vào luồng chat của phòng.
+- **Không làm phiền (Zero Annoying Popups)**: Loại bỏ hoàn toàn các hộp thoại popup cắt ngang màn hình. Người nhận nhận diện file và có thể tải về bất cứ lúc nào.
+- **Nút đính kèm nhanh 📎**: Bổ sung nút đính kèm tập tin ngay cạnh ô nhập tin nhắn ở khung chat chính.
+- **Chia nhỏ khối dữ liệu (Chunking)**: File được chia nhỏ thành các chunk 64 KB (`CHUNK_SIZE`), đọc và stream qua Socket bằng bộ đệm tĩnh giúp tiết kiệm RAM, truyền được cả file dung lượng lớn.
+- **Toàn vẹn dữ liệu SHA-256**: Hệ thống tự động tính và đối soát mã băm SHA-256 sau khi tải về, hiển thị kết quả xác thực xanh `[ THÀNH CÔNG // SHA-256 KHỚP 100% ]` và cung cấp nút mở thư mục chứa file ngay lập tức.
 
 ---
 
@@ -201,10 +205,10 @@ Dự án đã tích hợp sẵn 2 kịch bản tự động:
 | 3 | **Giao thức đóng khung TCP** | Hoàn tất | Định dạng chuẩn `[Length][Type][Payload]` chống dính/phân mảnh gói tin TCP tuyệt đối. |
 | 4 | **Xác thực phòng chat** | Hoàn tất | Server sinh mã ngẫu nhiên 5 ký tự; kiểm tra và chỉ cho phép client hợp lệ tham gia. |
 | 5 | **Đồng bộ danh sách trực tuyến** | Hoàn tất | Cập nhật tự động thời gian thực khi có client kết nối hoặc ngắt kết nối. |
-| 6 | **Chat Broadcast & Direct 1-1** | Hoàn tất | Hỗ trợ chat chung cho toàn phòng và chat riêng tư 1-1 khi bấm chọn người nhận. |
-| 7 | **Truyền file nhị phân theo chunk** | Hoàn tất | Chia nhỏ file thành các khối 64KB, stream trực tiếp qua Server, an toàn cho RAM. |
-| 8 | **Xác nhận nhận file** | Hoàn tất | Phía nhận hiển thị hộp thoại xác nhận (Đồng ý/Từ chối) và tự chọn nơi lưu trên máy tính. |
-| 9 | **Kiểm tra mã băm SHA-256** | Hoàn tất | Tự động tính và đối soát mã băm SHA-256 sau khi nhận xong, xác thực tính toàn vẹn 100%. |
+| 6 | **Chat Broadcast & Direct 1-1** | Hoàn tất | Hỗ trợ chat chung cho toàn phòng và chat riêng tư 1-1 khi bấm chọn người nhận; bong bóng chat phân biệt rõ người gửi. |
+| 7 | **Đồng bộ lịch sử tin nhắn** | Hoàn tất | Người vào sau (Late Joiner) nhận lại 100 tin nhắn và file cũ qua bộ đệm RAM Server mà không cần Database. |
+| 8 | **Lưu trữ & Truyền file Store-and-Forward** | Hoàn tất | File được lưu tạm trên `server_storage/`, hiển thị Thẻ File trong chat kèm nút Tải về, không dùng popup phiền phức. |
+| 9 | **Kiểm tra mã băm SHA-256** | Hoàn tất | Tự động tính và đối soát mã băm SHA-256 sau khi tải xong, xác thực tính toàn vẹn 100%. |
 | 10 | **Đa luồng (Multithreading)** | Hoàn tất | Server dùng `ExecutorService` cached thread pool; Client có luồng gửi/nhận riêng biệt. |
 | 11 | **Thread Safety & JavaFX UI** | Hoàn tất | Mọi cập nhật giao diện đều qua `Platform.runLater()`; Socket stream được bảo vệ an toàn luồng. |
-| 12 | **Đơn giản & Dễ demo** | Hoàn tất | Một project duy nhất, có script chạy 1-click, comment tiếng Việt ngắn gọn, dễ hiểu. |
+| 12 | **Đơn giản & Dễ demo** | Hoàn tất | Một project duy nhất, có script chạy 1-click, log tiếng Anh chống lỗi font console, comment tiếng Việt dễ hiểu. |
