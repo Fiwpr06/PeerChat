@@ -9,6 +9,8 @@ module com.peerchat {
     opens com.peerchat.client.controller to javafx.fxml;
     opens com.peerchat.client.model to javafx.base;
     opens com.peerchat.shared.model to javafx.base;
+    opens com.peerchat.server to javafx.graphics, javafx.fxml;
+    opens com.peerchat.server.controller to javafx.fxml;
 
     exports com.peerchat.client;
     exports com.peerchat.client.controller;
@@ -17,4 +19,5 @@ module com.peerchat {
     exports com.peerchat.shared.protocol;
     exports com.peerchat.shared.util;
     exports com.peerchat.server;
+    exports com.peerchat.server.controller;
 }

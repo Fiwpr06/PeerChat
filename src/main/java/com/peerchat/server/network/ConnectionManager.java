@@ -19,10 +19,21 @@ public class ConnectionManager {
     private static final Logger LOGGER = Logger.getLogger(ConnectionManager.class.getName());
     private final Map<String, ConnectedClient> clients = new ConcurrentHashMap<>();
 
+    // Giao diện lắng nghe sự kiện thêm/bớt client cho Server UI
+    public interface ClientListener {
+        void onClientAdded(ClientInfo info);
+        void onClientRemoved(String clientId);
+    }
+    private final List<ClientListener> clientListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addClientListener(ClientListener l) { clientListeners.add(l); }
+    public void removeClientListener(ClientListener l) { clientListeners.remove(l); }
+
     // Đăng ký client mới và phát danh sách online cho mọi người
     public void addClient(ConnectedClient client) {
         clients.put(client.getClientId(), client);
         LOGGER.info("[NODE_JOIN] Client connected: " + client);
+        clientListeners.forEach(l -> l.onClientAdded(client.getInfo()));
         broadcastClientList();
     }
 
@@ -32,6 +43,7 @@ public class ConnectionManager {
         if (client != null) {
             LOGGER.info("[NODE_LOST] Client disconnected: " + client);
             client.close();
+            clientListeners.forEach(l -> l.onClientRemoved(clientId));
             broadcastClientList();
         }
     }

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.peerchat.server.controller.ServerController"
+            prefWidth="960.0" prefHeight="650.0"
+            stylesheets="@../css/style.css">
+
+    <!-- Thanh tiêu đề phía trên -->
+    <top>
+        <HBox styleClass="hud-bar" spacing="16" alignment="CENTER_LEFT">
+            <padding>
+                <Insets top="8" right="16" bottom="8" left="16"/>
+            </padding>
+            <Label text="PEERCHAT // TRUNG TÂM ĐIỀU HÀNH MÁY CHỦ" styleClass="hud-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Label text="Trạng thái:" styleClass="telemetry-label"/>
+            <Label fx:id="statusPillLabel" text="ĐANG DỪNG" styleClass="server-status-pill-stopped"/>
+
+            <Button fx:id="serverToggleBtn" text="▶ KHỞI ĐỘNG SERVER" onAction="#handleToggleServer"
+                    styleClass="button-action" prefWidth="180.0"/>
+        </HBox>
+    </top>
+
+    <!-- Khu vực điều khiển và giám sát chính -->
+    <center>
+        <VBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+
+            <!-- Bảng thông số & Khối mã phòng -->
+            <HBox styleClass="terminal-panel" spacing="20" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="10" right="14" bottom="10" left="14"/>
+                </padding>
+
+                <!-- Cổng kết nối -->
+                <VBox spacing="4">
+                    <Label text="CỔNG PORT:" styleClass="telemetry-label"/>
+                    <TextField fx:id="portField" text="5000" prefWidth="85.0"/>
+                </VBox>
+
+                <!-- Địa chỉ IP -->
+                <VBox spacing="4">
+                    <Label text="TỌA ĐỘ MÁY CHỦ (LOCAL / LAN):" styleClass="telemetry-label"/>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Label fx:id="ipDisplayLabel" text="127.0.0.1 | LAN: 192.168.1.x" styleClass="telemetry-value-nominal"/>
+                        <Button text="📋 COPY IP" onAction="#handleCopyIp" styleClass="button"/>
+                    </HBox>
+                </VBox>
+
+                <Region HBox.hgrow="ALWAYS"/>
+
+                <!-- Khối Mã Phòng Nổi Bật Kèm Nút Copy 1 Chạm -->
+                <VBox alignment="CENTER_RIGHT" spacing="4">
+                    <Label text="MÃ PHÒNG (CONNECTION CODE):" styleClass="telemetry-label"/>
+                    <HBox spacing="8" alignment="CENTER_RIGHT">
+                        <HBox styleClass="server-code-box">
+                            <Label fx:id="codeDisplayLabel" text="-----" styleClass="server-code-text"/>
+                        </HBox>
+                        <Button fx:id="copyCodeBtn" text="📋 SAO CHÉP MÃ" onAction="#handleCopyCode"
+                                styleClass="button-action" prefHeight="42.0" prefWidth="140.0"/>
+                    </HBox>
+                    <Label fx:id="copyFeedbackLabel" text="" styleClass="telemetry-value-nominal"/>
+                </VBox>
+            </HBox>
+
+            <!-- Khung giám sát 2 cột -->
+            <SplitPane fx:id="monitorSplitPane" dividerPositions="0.45" VBox.vgrow="ALWAYS">
+                <!-- Cột trái: Danh sách Client online -->
+                <VBox styleClass="terminal-panel" spacing="8">
+                    <padding>
+                        <Insets top="8" right="8" bottom="8" left="8"/>
+                    </padding>
+                    <HBox alignment="CENTER_LEFT">
+                        <Label text="[ CLIENTS ĐANG KẾT NỐI ]" styleClass="panel-header"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="clientCountLabel" text="0 NODES" styleClass="telemetry-value-nominal"/>
+                    </HBox>
+
+                    <TableView fx:id="clientsTableView" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colName" text="CALLSIGN" prefWidth="120.0"/>
+                            <TableColumn fx:id="colAddress" text="ĐỊA CHỈ IP:PORT" prefWidth="150.0"/>
+                            <TableColumn fx:id="colTime" text="THỜI GIAN VÀO" prefWidth="110.0"/>
+                        </columns>
+                        <columnResizePolicy>
+                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                        </columnResizePolicy>
+                    </TableView>
+
+                    <HBox alignment="CENTER_RIGHT" spacing="8">
+                        <Button text="NGẮT KẾT NỐI CLIENT ĐÃ CHỌN" onAction="#handleDisconnectSelectedClient"
+                                styleClass="button-danger"/>
+                    </HBox>
+                </VBox>
+
+                <!-- Cột phải: Nhật ký hoạt động máy chủ -->
+                <VBox styleClass="terminal-panel" spacing="8">
+                    <padding>
+                        <Insets top="8" right="8" bottom="8" left="8"/>
+                    </padding>
+                    <HBox alignment="CENTER_LEFT">
+                        <Label text="[ NHẬT KÝ HOẠT ĐỘNG // CONSOLE LOG ]" styleClass="panel-header"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="XÓA LOG" onAction="#handleClearLog" styleClass="button"/>
+                    </HBox>
+
+                    <TextArea fx:id="logTextArea" editable="false" wrapText="true" VBox.vgrow="ALWAYS"
+                              styleClass="server-log-area"/>
+                </VBox>
+            </SplitPane>
+        </VBox>
+    </center>
+
+    <!-- Thanh trạng thái dưới cùng -->
+    <bottom>
+        <HBox styleClass="hud-status-bar" spacing="20" alignment="CENTER_LEFT">
+            <padding>
+                <Insets top="6" right="16" bottom="6" left="16"/>
+            </padding>
+            <Label fx:id="footerClientsLabel" text="Nodes: 0 trực tuyến" styleClass="telemetry-label"/>
+            <Label fx:id="footerStorageLabel" text="Kho lưu trữ: 0 tệp" styleClass="telemetry-label"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="serverClockLabel" text="GIỜ HT: 00:00:00" styleClass="telemetry-label"/>
+        </HBox>
+    </bottom>
+</BorderPane>

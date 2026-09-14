@@ -39,6 +39,26 @@ public class Server {
     }
 
     public static void main(String[] args) {
+        boolean forceCli = false;
+        for (String arg : args) {
+            if ("--cli".equalsIgnoreCase(arg) || "--nogui".equalsIgnoreCase(arg)) {
+                forceCli = true;
+                break;
+            }
+        }
+
+        // Tự động khởi chạy giao diện đồ họa nếu có JavaFX
+        if (!forceCli) {
+            try {
+                Class<?> appClass = Class.forName("com.peerchat.server.ServerApp");
+                java.lang.reflect.Method launchMethod = appClass.getMethod("main", String[].class);
+                launchMethod.invoke(null, (Object) args);
+                return;
+            } catch (Throwable ignored) {
+                // Fallback về CLI nếu không có JavaFX Toolkit hoặc chạy môi trường headless
+            }
+        }
+
         int port = ProtocolConstants.DEFAULT_PORT;
         if (args.length > 0) {
             try {
@@ -117,6 +137,9 @@ public class Server {
         return port;
     }
     public boolean isRunning() { return running; }
+    public ConnectionManager getConnectionManager() { return connectionManager; }
+    public FileTransferService getFileTransferService() { return fileTransferService; }
+    public ChatService getChatService() { return chatService; }
 
     // In thông tin kết nối lên màn hình console Server
     private void printBanner() {
@@ -145,7 +168,7 @@ public class Server {
     }
 
     // Tự động tìm địa chỉ IP mạng LAN của máy chủ
-    private static String getLocalLanAddress() {
+    public static String getLocalLanAddress() {
         try {
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
             while (interfaces.hasMoreElements()) {
