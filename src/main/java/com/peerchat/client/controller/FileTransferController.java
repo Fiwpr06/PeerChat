@@ -1,94 +1,182 @@
 package com.peerchat.client.controller;
 
-import com.peerchat.client.model.TransferState;
+import com.peerchat.client.service.ChatService;
 import com.peerchat.client.service.FileTransferService;
 import com.peerchat.client.util.ClientUtils;
 import com.peerchat.shared.model.ClientInfo;
 import com.peerchat.shared.model.FileInfo;
-import com.peerchat.shared.protocol.ProtocolConstants;
 import com.peerchat.shared.util.FileUtils;
+import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
-import java.util.Optional;
 
-// Điều khiển giao diện truyền file (gửi, nhận, tiến trình, kiểm tra SHA-256)
+// Điều khiển panel Kho Tài Liệu Phòng (danh sách tập tin đã chia sẻ và tiến độ tải)
 public class FileTransferController {
-    @FXML private Label targetRecipientLabel;
-    @FXML private Label stagedFileLabel;
+    @FXML private VBox repoRootPanel;
+    @FXML private Label fileCountBadge;
+    @FXML private ListView<FileInfo> sharedFilesListView;
     @FXML private Label speedLabel;
     @FXML private Label statusLabel;
     @FXML private Label checksumLabel;
     @FXML private ProgressBar transferProgressBar;
-    @FXML private Button selectFileButton;
-    @FXML private Button sendButton;
-    @FXML private Button abortButton;
 
     private FileTransferService fileTransferService;
-    private File stagedFile;
-    private String selectedTargetClientId = ProtocolConstants.TARGET_ALL;
+    private ChatService chatService;
+    private Runnable closeCallback;
 
-    // Khởi tạo và liên kết các thuộc tính tiến trình truyền file với giao diện
-    public void initService(FileTransferService fileTransferService) {
+    // Khởi tạo dịch vụ và danh sách tập tin phòng
+    public void initData(FileTransferService fileTransferService, ChatService chatService, Runnable closeCallback) {
         this.fileTransferService = fileTransferService;
+        this.chatService = chatService;
+        this.closeCallback = closeCallback;
 
-        // Ràng buộc thuộc tính tiến trình và trạng thái
+        // Ràng buộc thanh telemetry tiến trình
         transferProgressBar.progressProperty().bind(fileTransferService.progressProperty());
         speedLabel.textProperty().bind(fileTransferService.telemetrySpeedProperty());
         statusLabel.textProperty().bind(fileTransferService.statusTextProperty());
         checksumLabel.textProperty().bind(fileTransferService.checksumResultProperty());
 
-        fileTransferService.stateProperty().addListener((obs, oldState, newState) -> {
-            boolean active = (newState == TransferState.TRANSFERRING || newState == TransferState.REQUESTING || newState == TransferState.WAITING_ACCEPT);
-            abortButton.setDisable(!active);
-            selectFileButton.setDisable(active);
-            sendButton.setDisable(active || stagedFile == null);
+        // Gắn danh sách tập tin phòng
+        sharedFilesListView.setItems(chatService.getSharedFiles());
+        updateBadge();
+
+        chatService.getSharedFiles().addListener((ListChangeListener<FileInfo>) c -> updateBadge());
+
+        // Định dạng hiển thị từng dòng tập tin trong kho
+        sharedFilesListView.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(FileInfo item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    VBox cellBox = new VBox(4);
+                    cellBox.setStyle("-fx-padding: 6px 8px; -fx-background-color: transparent;");
+
+                    HBox topRow = new HBox(6);
+                    topRow.setAlignment(Pos.CENTER_LEFT);
+
+                    String badge = getFileTypeBadge(item.getFileName());
+                    String icon = getFileTypeIcon(badge);
+
+                    Label typeBadge = new Label(icon + " " + badge);
+                    typeBadge.getStyleClass().add("avatar-badge");
+
+                    Label nameLabel = new Label(item.getFileName());
+                    nameLabel.setStyle("-fx-text-fill: #1c1b17; -fx-font-weight: bold; -fx-font-size: 11px;");
+                    nameLabel.setMaxWidth(160);
+
+                    topRow.getChildren().addAll(typeBadge, nameLabel);
+
+                    HBox bottomRow = new HBox(6);
+                    bottomRow.setAlignment(Pos.CENTER_LEFT);
+
+                    Label metaLabel = new Label(FileUtils.formatFileSize(item.getFileSize()) + " • " + item.getSenderName());
+                    metaLabel.setStyle("-fx-text-fill: #615c4f; -fx-font-size: 10px;");
+
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+
+                    Button downloadBtn = new Button("⬇ TẢI VỀ");
+                    downloadBtn.getStyleClass().add("file-card-btn");
+                    downloadBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2px 8px;");
+
+                    downloadBtn.setOnAction(e -> {
+                        FileChooser chooser = new FileChooser();
+                        chooser.setTitle("CHỌN NƠI LƯU TẬP TIN");
+                        chooser.setInitialFileName(item.getFileName());
+                        File dest = chooser.showSaveDialog(repoRootPanel.getScene().getWindow());
+
+                        if (dest != null) {
+                            downloadBtn.setDisable(true);
+                            downloadBtn.setText("ĐANG TẢI...");
+                            fileTransferService.requestDownload(item, dest, new FileTransferService.DownloadCallback() {
+                                @Override
+                                public void onProgress(double progress, long currentBytes, long totalBytes) {}
+
+                                @Override
+                                public void onComplete(boolean success, String hash, String error) {
+                                    ClientUtils.runOnFxThread(() -> {
+                                        if (success) {
+                                            downloadBtn.setText("📂 MỞ THƯ MỤC");
+                                            downloadBtn.setDisable(false);
+                                            downloadBtn.setOnAction(ev -> {
+                                                try {
+                                                    if (dest.getParentFile() != null && dest.getParentFile().exists()) {
+                                                        java.awt.Desktop.getDesktop().open(dest.getParentFile());
+                                                    }
+                                                } catch (Exception ignored) {}
+                                            });
+                                        } else {
+                                            downloadBtn.setText("TẢI LẠI");
+                                            downloadBtn.setDisable(false);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+
+                    bottomRow.getChildren().addAll(metaLabel, spacer, downloadBtn);
+                    cellBox.getChildren().addAll(topRow, bottomRow);
+                    setGraphic(cellBox);
+                }
+            }
         });
     }
 
-    // Thiết lập người nhận file mục tiêu
-    public void setSelectedTarget(ClientInfo peer) {
-        if (peer == null) {
-            this.selectedTargetClientId = ProtocolConstants.TARGET_ALL;
-            targetRecipientLabel.setText("TẤT CẢ NGƯỜI DÙNG (BROADCAST)");
-        } else {
-            this.selectedTargetClientId = peer.getClientId();
-            targetRecipientLabel.setText(peer.getDisplayName() + " [" + peer.getCoordinates() + "]");
+    public void initService(FileTransferService fileTransferService) {
+        this.fileTransferService = fileTransferService;
+    }
+
+    public void setSelectedTarget(ClientInfo peer) {}
+
+    // Đóng hoặc ẩn panel kho tài liệu
+    @FXML
+    private void handleClosePanel() {
+        if (closeCallback != null) {
+            closeCallback.run();
         }
     }
 
-    // Mở hộp thoại chọn file từ máy tính
-    @FXML
-    private void handleSelectFile() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("CHỌN FILE ĐỂ TRUYỀN");
-        File file = chooser.showOpenDialog(selectFileButton.getScene().getWindow());
-
-        if (file != null && file.exists()) {
-            stagedFile = file;
-            stagedFileLabel.setText(file.getName() + " (" + FileUtils.formatFileSize(file.length()) + ")");
-            sendButton.setDisable(false);
+    private void updateBadge() {
+        if (fileCountBadge != null && chatService != null) {
+            int count = chatService.getSharedFiles().size();
+            fileCountBadge.setText(count + " TỆP");
         }
     }
 
-    // Bắt đầu gửi file đã chọn
-    @FXML
-    private void handleSendFile() {
-        if (stagedFile == null || fileTransferService == null) return;
-        fileTransferService.stageAndSendFile(stagedFile, selectedTargetClientId);
+    // Nhận diện loại tập tin dựa theo phần mở rộng
+    public static String getFileTypeBadge(String fileName) {
+        if (fileName == null) return "TẬP TIN";
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".pdf")) return "PDF";
+        if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".bmp")) return "ẢNH";
+        if (lower.endsWith(".zip") || lower.endsWith(".rar") || lower.endsWith(".7z") || lower.endsWith(".tar") || lower.endsWith(".gz")) return "NÉN";
+        if (lower.endsWith(".txt") || lower.endsWith(".doc") || lower.endsWith(".docx") || lower.endsWith(".rtf") || lower.endsWith(".md")) return "VĂN BẢN";
+        if (lower.endsWith(".java") || lower.endsWith(".py") || lower.endsWith(".c") || lower.endsWith(".cpp") || lower.endsWith(".js") || lower.endsWith(".html") || lower.endsWith(".css") || lower.endsWith(".json") || lower.endsWith(".xml")) return "CODE";
+        if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".avi")) return "MEDIA";
+        return "TẬP TIN";
     }
 
-    // Hủy phiên truyền file hiện tại
-    @FXML
-    private void handleAbort() {
-        if (fileTransferService != null) {
-            fileTransferService.abortTransfer();
-        }
+    // Gán icon biểu tượng cho từng loại tập tin
+    public static String getFileTypeIcon(String badge) {
+        return switch (badge) {
+            case "PDF" -> "📕";
+            case "ẢNH" -> "🖼";
+            case "NÉN" -> "📦";
+            case "VĂN BẢN" -> "📄";
+            case "CODE" -> "💻";
+            case "MEDIA" -> "🎬";
+            default -> "🗎";
+        };
     }
 }

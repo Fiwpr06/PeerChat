@@ -3,60 +3,47 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:id="repoRootPanel"
       fx:controller="com.peerchat.client.controller.FileTransferController"
-      styleClass="terminal-panel" spacing="12" prefWidth="320.0">
+      styleClass="terminal-panel" spacing="8" prefWidth="300.0">
 
     <padding>
-        <Insets top="12" right="14" bottom="12" left="14"/>
+        <Insets top="10" right="10" bottom="10" left="10"/>
     </padding>
 
-    <!-- Tiêu đề -->
-    <Label text="[ TRUYỀN DỮ LIỆU QUA SERVER ]" styleClass="panel-header"/>
-    <Label text="Truyền file theo chunk 64KB, kiểm tra SHA-256." styleClass="telemetry-label"/>
+    <!-- Tiêu đề Kho tài liệu và nút đóng -->
+    <HBox alignment="CENTER_LEFT" spacing="6">
+        <Label text="[ KHO TÀI LIỆU PHÒNG ]" styleClass="panel-header"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="fileCountBadge" text="0 TỆP" styleClass="telemetry-value-cyan"/>
+        <Button text="✕" onAction="#handleClosePanel" styleClass="button" prefWidth="26.0" prefHeight="22.0"/>
+    </HBox>
 
-    <!-- Người nhận đã chọn -->
-    <VBox spacing="3">
-        <Label text="Người nhận:" styleClass="telemetry-label"/>
-        <Label fx:id="targetRecipientLabel" text="TẤT CẢ CLIENTS (GỬI CHUNG)"
-               styleClass="telemetry-value-warn" wrapText="true"/>
-    </VBox>
+    <Label text="Kéo thả tập tin vào chat để tải lên" styleClass="telemetry-label"/>
 
-    <!-- File đã chọn -->
-    <VBox spacing="3">
-        <Label text="File đã chọn:" styleClass="telemetry-label"/>
-        <Label fx:id="stagedFileLabel" text="Chưa chọn file nào"
-               styleClass="telemetry-value-cyan" wrapText="true"/>
-    </VBox>
+    <!-- Danh sách file đã chia sẻ -->
+    <ListView fx:id="sharedFilesListView" VBox.vgrow="ALWAYS"/>
 
-    <!-- Nút chọn file -->
-    <Button fx:id="selectFileButton" text="CHỌN FILE TỪ MÁY..." onAction="#handleSelectFile" maxWidth="Infinity"/>
-
-    <!-- Tiến độ và tốc độ -->
-    <VBox spacing="6">
+    <!-- Khối giám sát tiến độ tải / gửi file -->
+    <VBox spacing="4" styleClass="hud-status-bar">
+        <padding>
+            <Insets top="6" right="8" bottom="6" left="8"/>
+        </padding>
         <HBox alignment="CENTER_LEFT">
-            <Label text="Tiến độ truyền:" styleClass="telemetry-label"/>
-            <HBox HBox.hgrow="ALWAYS"/>
+            <Label text="Tiến độ truyền tải:" styleClass="telemetry-label"/>
+            <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="speedLabel" text="0.0 KB/s" styleClass="telemetry-value-nominal"/>
         </HBox>
-
         <ProgressBar fx:id="transferProgressBar" progress="0.0" maxWidth="Infinity"/>
         <Label fx:id="statusLabel" text="SẴN SÀNG" styleClass="telemetry-label" wrapText="true"/>
+        <Label fx:id="checksumLabel" text="SHA-256: [Chờ truyền]" styleClass="telemetry-value-nominal" wrapText="true"/>
     </VBox>
-
-    <!-- Kết quả kiểm tra tính toàn vẹn SHA-256 -->
-    <VBox spacing="3">
-        <Label text="Kiểm tra toàn vẹn SHA-256:" styleClass="telemetry-label"/>
-        <Label fx:id="checksumLabel" text="[Chờ truyền file]" styleClass="telemetry-value-nominal" wrapText="true"/>
-    </VBox>
-
-    <!-- Nút bấm hành động -->
-    <HBox spacing="8" alignment="CENTER_RIGHT">
-        <Button fx:id="abortButton" text="HỦY BỎ" onAction="#handleAbort" styleClass="button-danger" disable="true"/>
-        <Button fx:id="sendButton" text="GỬI FILE" onAction="#handleSendFile" styleClass="button-action" disable="true"/>
-    </HBox>
 </VBox>
+
