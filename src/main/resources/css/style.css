@@ -13,34 +13,34 @@
 }
 
 /* ==========================================================================
-   THANH CHỈ HUY & HUD TELEMETRY (DEEP SOLID CHARCOAL BARS)
+   THANH CHỈ HUY & HUD TELEMETRY (WARM SAND NIER MILITARY OS)
    ========================================================================== */
 
 .hud-bar {
-    -fx-background-color: #25241e;
-    -fx-border-color: #3e3b33;
+    -fx-background-color: #c8c3b0;
+    -fx-border-color: #4b473b;
     -fx-border-width: 0 0 2px 0;
     -fx-padding: 8px 16px;
     -fx-alignment: center-left;
 }
 
 .hud-status-bar {
-    -fx-background-color: #25241e;
-    -fx-border-color: #3e3b33;
+    -fx-background-color: #c8c3b0;
+    -fx-border-color: #4b473b;
     -fx-border-width: 2px 0 0 0;
     -fx-padding: 6px 16px;
 }
 
 .hud-title {
-    -fx-text-fill: #f5f3ec;
+    -fx-text-fill: #201f1a;
     -fx-font-family: "Consolas", "Segoe UI", monospace;
     -fx-font-size: 14px;
     -fx-font-weight: bold;
 }
 
-/* Màu chữ mặc định cho các nhãn telemetry (dùng cho bề mặt sáng/parchment) */
+/* Màu chữ mặc định cho các nhãn telemetry */
 .telemetry-label {
-    -fx-text-fill: #595446;
+    -fx-text-fill: #5a5547;
     -fx-font-size: 12px;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .telemetry-value-warn {
-    -fx-text-fill: #a1441a;
+    -fx-text-fill: #b8522e;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
 }
@@ -62,30 +62,30 @@
     -fx-font-weight: bold;
 }
 
-/* Riêng các nhãn nằm trên thanh HUD tối (Đảm bảo tương phản cao, sáng rõ) */
+/* Đồng bộ nhãn trên thanh HUD (Đảm bảo tương phản cao, sáng rõ và hài hòa) */
 .hud-bar .telemetry-label,
 .hud-status-bar .telemetry-label {
-    -fx-text-fill: #c5c0af;
+    -fx-text-fill: #5a5547;
     -fx-font-size: 12px;
 }
 
 .hud-bar .telemetry-value-nominal,
 .hud-status-bar .telemetry-value-nominal {
-    -fx-text-fill: #a5d698;
+    -fx-text-fill: #276620;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
 }
 
 .hud-bar .telemetry-value-warn,
 .hud-status-bar .telemetry-value-warn {
-    -fx-text-fill: #dca074;
+    -fx-text-fill: #b8522e;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
 }
 
 .hud-bar .telemetry-value-cyan,
 .hud-status-bar .telemetry-value-cyan {
-    -fx-text-fill: #88b7d2;
+    -fx-text-fill: #1f4f6e;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
 }
@@ -518,3 +518,103 @@
     -fx-text-fill: #1c1b17;
     -fx-font-family: "Consolas", "Segoe UI", monospace;
 }
+
+/* ==========================================================================
+   TRẠNG THÁI TẬP TIN BỊ MẤT / KHÔNG TỒN TẠI
+   ========================================================================== */
+
+.file-card-status-lost {
+    -fx-text-fill: #b8522e;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+/* ==========================================================================
+   GIAO DIỆN SERVER // NIER:AUTOMATA OS
+   ========================================================================== */
+
+.server-code-box {
+    -fx-background-color: #d8d3c3;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 1px;
+    -fx-padding: 8px 16px;
+    -fx-alignment: center;
+}
+
+.server-code-text {
+    -fx-text-fill: #b8522e;
+    -fx-font-family: "Consolas", "Lucida Console", monospace;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.server-log-area {
+    -fx-font-family: "Consolas", "Lucida Console", monospace;
+    -fx-font-size: 11px;
+    -fx-text-fill: #1c1b17;
+    -fx-background-color: #e5e0d1;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 1px;
+}
+
+.server-log-area .content {
+    -fx-background-color: #e5e0d1;
+}
+
+.server-status-pill-running {
+    -fx-background-color: #3e7238;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-padding: 4px 10px;
+    -fx-font-size: 11px;
+}
+
+.server-status-pill-stopped {
+    -fx-background-color: #615c4f;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-padding: 4px 10px;
+    -fx-font-size: 11px;
+}
+
+.table-view {
+    -fx-background-color: #ebe7da;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 1px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #c8c3b0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: #4b473b;
+    -fx-border-width: 0 1px 1px 0;
+    -fx-padding: 6px;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #201f1a;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+
+.table-row-cell {
+    -fx-background-color: #ebe7da;
+    -fx-border-color: #dfdbce;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #e5e0d1;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #25241e;
+}
+
+.table-row-cell:selected .text {
+    -fx-fill: #ffffff;
+}
+

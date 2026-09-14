@@ -43,23 +43,23 @@
 
     <!-- Khu vực làm việc chính 3 cột -->
     <center>
-        <SplitPane fx:id="mainSplitPane" dividerPositions="0.22, 0.72">
-            <!-- Cột trái: Danh sách Client đang online -->
-            <VBox styleClass="terminal-panel" spacing="8">
+        <SplitPane fx:id="mainSplitPane" dividerPositions="0.13, 0.80">
+            <!-- Cột trái: Danh sách Client đang online (Rút gọn còn 1/2) -->
+            <VBox styleClass="terminal-panel" spacing="8" minWidth="110.0" prefWidth="140.0">
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="[ DANH SÁCH TRỰC TUYẾN ]" styleClass="panel-header"/>
+                    <Label text="[ ONLINE ]" styleClass="panel-header"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="peerCountLabel" text="0 ONLINE" styleClass="telemetry-value-nominal"/>
+                    <Label fx:id="peerCountLabel" text="0" styleClass="telemetry-value-nominal"/>
                 </HBox>
 
                 <ListView fx:id="peersListView" VBox.vgrow="ALWAYS"/>
             </VBox>
 
             <!-- Cột giữa: Luồng tin nhắn chat và ô nhập -->
-            <VBox spacing="8">
+            <VBox spacing="8" minWidth="350.0">
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
@@ -86,7 +86,7 @@
                 <!-- Ô nhập tin nhắn, nút đính kèm tập tin và nút gửi -->
                 <HBox spacing="8" alignment="BOTTOM_CENTER">
                     <Button fx:id="attachFileButton" text="📎 GỬI FILE" onAction="#handleAttachFile"
-                            styleClass="button" prefHeight="55.0" prefWidth="100.0"/>
+                            styleClass="button" prefHeight="55.0" prefWidth="125.0" minWidth="120.0"/>
                     <TextArea fx:id="messageInputField" promptText="Nhập tin nhắn (Enter: Gửi, Shift+Enter: Xuống dòng, Kéo thả file vào đây)..."
                               HBox.hgrow="ALWAYS" prefRowCount="2" maxHeight="70" wrapText="true"/>
                     <Button fx:id="sendButton" text="GỬI" onAction="#handleSendMessage"

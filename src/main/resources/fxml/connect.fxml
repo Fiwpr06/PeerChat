@@ -60,7 +60,7 @@
                 <!-- Tên hiển thị -->
                 <VBox spacing="4">
                     <Label text="Tên hiển thị (Display Name):" styleClass="telemetry-label"/>
-                    <TextField fx:id="nameField" promptText="Nhập tên của bạn" text="Alice"/>
+                    <TextField fx:id="nameField" promptText="Nhập tên của bạn (ví dụ: Operator, 2B, 9S...)"/>
                 </VBox>
 
                 <!-- Trạng thái kết nối -->
