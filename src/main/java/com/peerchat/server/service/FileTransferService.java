@@ -169,6 +169,11 @@ public class FileTransferService {
 
                 if (targetFile == null || !targetFile.exists()) {
                     LOGGER.warning("[DOWNLOAD_NOT_FOUND] Requested fileId not found: " + fileId);
+                    FileInfo notFound = new FileInfo();
+                    notFound.setFileId(fileId);
+                    notFound.setChecksum("NOT_FOUND");
+                    ProtocolMessage errPacket = ProtocolMessage.createText(MessageType.FILE_STATUS, notFound.toJson());
+                    connectionManager.routeMessage(requestingClientId, errPacket, null);
                     return;
                 }
 

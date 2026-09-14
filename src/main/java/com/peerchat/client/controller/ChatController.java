@@ -402,6 +402,9 @@ public class ChatController {
         Label loadingLabel = new Label("⏳ ĐANG TẢI HÌNH ẢNH...");
         loadingLabel.getStyleClass().add("file-card-meta");
 
+        Button downloadBtn = new Button("⬇ TẢI VỀ");
+        downloadBtn.getStyleClass().add("file-card-btn");
+
         File cacheFile = new File(CACHE_DIR, fileInfo.getFileId() + "_" + fileInfo.getFileName());
 
         Image cachedImg = imageCache.get(fileInfo.getFileId());
@@ -434,6 +437,10 @@ public class ChatController {
                             if (!imageBox.getChildren().contains(imageView)) {
                                 imageBox.getChildren().add(0, imageView);
                             }
+                        } else if ("FILE_NOT_FOUND".equals(error)) {
+                            loadingLabel.setText("❌ HÌNH ẢNH ĐÃ BỊ XÓA HOẶC KHÔNG TỒN TẠI TRÊN MÁY CHỦ");
+                            downloadBtn.setText("FILE ĐÃ MẤT");
+                            downloadBtn.setDisable(true);
                         } else {
                             loadingLabel.setText("❌ Không thể tải ảnh xem trước");
                         }
@@ -451,9 +458,6 @@ public class ChatController {
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button downloadBtn = new Button("⬇ TẢI VỀ");
-        downloadBtn.getStyleClass().add("file-card-btn");
 
         downloadBtn.setOnAction(e -> {
             FileChooser chooser = new FileChooser();
@@ -484,6 +488,9 @@ public class ChatController {
                                     downloadBtn.setText("📂 MỞ THƯ MỤC");
                                     downloadBtn.setDisable(false);
                                     downloadBtn.setOnAction(ev -> openDirectory(dest.getParentFile()));
+                                } else if ("FILE_NOT_FOUND".equals(error)) {
+                                    downloadBtn.setText("FILE ĐÃ MẤT");
+                                    downloadBtn.setDisable(true);
                                 } else {
                                     downloadBtn.setText("TẢI LẠI");
                                     downloadBtn.setDisable(false);
@@ -564,6 +571,11 @@ public class ChatController {
                                 downloadBtn.setText("📂 MỞ THƯ MỤC");
                                 downloadBtn.setDisable(false);
                                 downloadBtn.setOnAction(openEvent -> openDirectory(dest.getParentFile()));
+                            } else if ("FILE_NOT_FOUND".equals(error)) {
+                                statusLabel.setText("TẬP TIN ĐÃ MẤT // KHÔNG CÒN TRÊN MÁY CHỦ");
+                                statusLabel.getStyleClass().add("file-card-status-fail");
+                                downloadBtn.setText("FILE ĐÃ MẤT");
+                                downloadBtn.setDisable(true);
                             } else {
                                 statusLabel.setText("LỖI TẢI VỀ: " + (error != null ? error : "Lỗi dữ liệu"));
                                 statusLabel.getStyleClass().add("file-card-status-fail");
@@ -647,7 +659,7 @@ public class ChatController {
         } else {
             if (!mainSplitPane.getItems().contains(fileTransfer)) {
                 mainSplitPane.getItems().add(fileTransfer);
-                mainSplitPane.setDividerPositions(0.22, 0.72);
+                mainSplitPane.setDividerPositions(0.13, 0.80);
             }
             toggleRepoButton.setText("📁 ĐÓNG KHO");
             isRepoOpen = true;

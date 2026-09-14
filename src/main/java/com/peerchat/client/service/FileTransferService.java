@@ -265,8 +265,32 @@ public class FileTransferService {
         });
     }
 
-    // Server phản hồi trạng thái xác thực file upload
+    // Server phản hồi trạng thái xác thực file upload hoặc trạng thái tải file
     public void onFileStatusReceived(FileInfo info) {
+        if (info == null) return;
+
+        if ("NOT_FOUND".equalsIgnoreCase(info.getChecksum())) {
+            DownloadSession session = activeDownloads.remove(info.getFileId());
+            if (session != null) {
+                try {
+                    session.out.flush();
+                    session.out.close();
+                } catch (IOException ignored) {}
+                if (session.destFile != null && session.destFile.exists()) {
+                    session.destFile.delete();
+                }
+                ClientUtils.runOnFxThread(() -> {
+                    state.set(TransferState.FAILED);
+                    statusText.set("TẬP TIN ĐÃ MẤT // KHÔNG CÒN TRÊN MÁY CHỦ");
+                    checksumResult.set("FILE KHÔNG TỒN TẠI");
+                    if (session.callback != null) {
+                        session.callback.onComplete(false, null, "FILE_NOT_FOUND");
+                    }
+                });
+            }
+            return;
+        }
+
         ClientUtils.runOnFxThread(() -> {
             if ("VERIFIED".equalsIgnoreCase(info.getChecksum())) {
                 state.set(TransferState.COMPLETED);

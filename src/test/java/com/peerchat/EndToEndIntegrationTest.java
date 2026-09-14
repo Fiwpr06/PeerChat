@@ -376,4 +376,32 @@ public class EndToEndIntegrationTest {
             bob.disconnect();
         }
     }
+
+    @Test
+    @Order(7)
+    @DisplayName("Kiem thu yeu cau tai file khong ton tai thi Server phan hoi FILE_STATUS NOT_FOUND")
+    void testDownloadMissingFileReturnsNotFound() throws Exception {
+        TestClient alice = new TestClient("Alice");
+
+        try {
+            alice.connect(serverPort, roomCode);
+
+            // Alice yêu cầu tải file không có trên server
+            String missingFileId = "missing-" + java.util.UUID.randomUUID();
+            String reqJson = "{\"fileId\":\"" + missingFileId + "\"}";
+            ProtocolMessage reqMsg = ProtocolMessage.createText(MessageType.FILE_DOWNLOAD_REQ, reqJson);
+            reqMsg.writeTo(alice.out);
+
+            // Server phải phản hồi gói tin FILE_STATUS với checksum là NOT_FOUND
+            ProtocolMessage statusMsg = alice.pollMessage(MessageType.FILE_STATUS, 5);
+            assertNotNull(statusMsg, "Server phai phan hoi FILE_STATUS khi file khong ton tai");
+
+            FileInfo reportedInfo = FileInfo.fromJson(statusMsg.getPayloadAsText());
+            assertEquals(missingFileId, reportedInfo.getFileId());
+            assertEquals("NOT_FOUND", reportedInfo.getChecksum(), "Server phai bao NOT_FOUND");
+
+        } finally {
+            alice.disconnect();
+        }
+    }
 }

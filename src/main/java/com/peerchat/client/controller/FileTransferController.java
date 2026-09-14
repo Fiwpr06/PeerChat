@@ -113,6 +113,9 @@ public class FileTransferController {
                                                     }
                                                 } catch (Exception ignored) {}
                                             });
+                                        } else if ("FILE_NOT_FOUND".equals(error)) {
+                                            downloadBtn.setText("FILE ĐÃ MẤT");
+                                            downloadBtn.setDisable(true);
                                         } else {
                                             downloadBtn.setText("TẢI LẠI");
                                             downloadBtn.setDisable(false);
