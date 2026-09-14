@@ -29,27 +29,32 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
 - Server quản lý danh sách kết nối qua `ConnectionManager`.
 - Khi có một Client mới tham gia hoặc ngắt kết nối (kể cả trường hợp tắt đột ngột/mất mạng), Server tự động phát hiện, dọn dẹp tài nguyên và gửi thông điệp `CLIENT_LIST_UPDATE` cập nhật tức thì đến toàn bộ người dùng còn lại.
 
-### 2.3. Nhắn Tin Đa Kênh, Phím Tắt & Bong Bóng Chat Chuẩn UX
-- **Kênh Chung & Chat Riêng tiện lợi**:
-  - Dòng cố định đầu danh sách: `● KÊNH CHUNG (TẤT CẢ PHÒNG)`. Nhấp vào ai trên danh sách để chat riêng 1-1 với người đó; nhấp lại dòng đầu để quay về chat chung toàn phòng cực kỳ trực quan mà không cần nút bấm phụ.
-- **Phím tắt nhập liệu chuyên nghiệp**:
+### 2.3. Nhắn Tin Đa Kênh, Phân Lập Trò Chuyện & Bong Bóng Chat Chuẩn UX
+- **Kênh Chung & Chat Riêng Phân Lập Độc Lập**:
+  - Dòng cố định đầu danh sách: `● KÊNH CHUNG`. Nhấp vào ai trên danh sách để chat riêng 1-1 với người đó; nhấp lại dòng đầu để quay về kênh chung toàn phòng cực kỳ trực quan mà không cần nút bấm phụ.
+  - **Phân lập hội thoại nghiêm ngặt**: Tin nhắn và tập tin gửi trong Kênh Chung sẽ được toàn bộ mọi người trong phòng nhìn thấy và phản hồi (tương tự Group Chat). Khi chọn một người dùng cụ thể, luồng chat chuyển sang hội thoại riêng tư và chỉ 2 người thấy tin nhắn/tập tin của nhau.
+- **Nút Gửi File Tiện Lợi & Phím Tắt Soạn Thảo**:
+  - Nút bấm **`[ 📎 GỬI FILE ]`** được tích hợp ngay cạnh ô nhập tin nhắn để chọn và gửi file nhanh chóng vào cuộc trò chuyện đang mở.
   - Nhấn `Enter`: Gửi tin nhắn ngay lập tức.
   - Nhấn `Shift + Enter`: Xuống dòng để soạn thảo văn bản dài nhiều đoạn (`TextArea`).
+  - Hỗ trợ **kéo thả tệp tin trực tiếp (Drag & Drop)** từ máy tính vào khung chat hoặc ô nhập tin nhắn.
+- **Xem Trước Hình Ảnh Trực Tiếp Trong Chat (Inline Image Preview)**:
+  - Các định dạng hình ảnh (`.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`) được hiển thị ảnh xem trước trực tiếp ngay bên trong bong bóng chat kèm nút **`[ ⬇ TẢI VỀ ]`** / **`[ 📂 MỞ THƯ MỤC ]`**.
+  - Tệp tin thông thường hiển thị thẻ đính kèm tối giản với biểu tượng `🗎`, dung lượng, mã băm SHA-256 đối soát và thanh tiến trình tải về.
 - **Phân biệt gửi / nhận trực quan**:
-  - Tin nhắn của mình: Căn lề **PHẢI**, viền gạch nung YoRHa Ochre (`#B8522E`), tên "BẠN [Callsign]". Thông báo tệp gửi đi cũng xuất hiện ngay trong luồng chat của chính mình.
+  - Tin nhắn của mình: Căn lề **PHẢI**, viền gạch nung YoRHa Ochre (`#B8522E`), tên "BẠN [Callsign]".
   - Tin nhắn của người khác: Căn lề **TRÁI**, kèm **Avatar huy hiệu chữ cái đầu** (`[A]`, `[B]`) màu xám than NieR (`#35332B`), tên người gửi màu xanh đá phiến (`#2B4A62`).
-- **Đồng bộ lịch sử tin nhắn (Late Joiner Sync)**: Người tham gia phòng sau vẫn nhìn thấy toàn bộ tin nhắn và các tập tin được chia sẻ trước đó nhờ bộ đệm vòng In-Memory (100 tin gần nhất) lưu trên RAM của Server (hoàn toàn không cần Database).
+- **Đồng bộ lịch sử tin nhắn (Late Joiner Sync)**: Người tham gia phòng sau vẫn nhìn thấy toàn bộ tin nhắn và các tập tin được chia sẻ trước đó trong Kênh Chung nhờ bộ đệm vòng In-Memory (100 tin gần nhất) lưu trên RAM của Server (hoàn toàn không cần Database).
 
-### 2.4. Lưu Trữ & Kéo Thả File Store-and-Forward (Kho Tài Liệu Phòng)
-- **Kéo thả tập tin trực tiếp (Drag & Drop)**: Bỏ hoàn toàn nút đính kèm cồng kềnh; người dùng chỉ cần kéo thả file trực tiếp từ File Explorer vào khung chat hoặc ô soạn tin nhắn với hiệu ứng viền đứt nét nổi bật. Thông báo tệp được chia sẻ sẽ hiển thị tinh gọn trong luồng chat.
+### 2.4. Lưu Trữ & Truyền File Store-and-Forward (Kho Tài Liệu Phòng)
+- **Đính kèm & Kéo thả tập tin linh hoạt**: Người dùng có thể nhấn nút `[ 📎 GỬI FILE ]` hoặc kéo thả trực tiếp file từ máy tính vào khung chat để gửi file vào cuộc trò chuyện đang chọn (Kênh Chung hoặc Chat Riêng).
 - **Kho Tài Liệu Phòng (Shared Repository Panel)**:
-  - Bảng bên phải liệt kê toàn bộ tập tin đã được gửi trong phòng với bộ đếm số lượng file thời gian thực.
-  - Tự động phân loại định dạng và gắn huy hiệu icon: `[PDF]`, `[ẢNH]`, `[NÉN]`, `[VĂN BẢN]`, `[CODE]`, `[MEDIA]`.
-  - Hiển thị tên file, dung lượng, người tải lên và nút bấm tải về chuẩn **`[ ⬇ TẢI VỀ ]`**.
+  - Bảng bên phải liệt kê các tập tin đã được gửi trong phòng với bộ đếm số lượng file thời gian thực.
+  - Hiển thị tinh gọn biểu tượng loại file (`🖼` cho ảnh, `🗎` cho tệp tin), tên file, dung lượng, người tải lên và nút bấm tải về chuẩn **`[ ⬇ TẢI VỀ ]`**.
   - Tải xong tự động chuyển sang nút **`[ 📂 MỞ THƯ MỤC ]`** giúp mở ngay thư mục chứa file mà không cần popup thông báo che khuất màn hình.
   - Tích hợp nút bật/tắt **`[ 📁 KHO TÀI LIỆU ]`** trên thanh HUD để thu gọn hoặc mở rộng toàn màn hình cho khung chat.
-- **Chia nhỏ khối dữ liệu (Chunking)**: File được chia nhỏ thành các chunk 64 KB (`CHUNK_SIZE`), đọc và stream qua Socket bằng bộ đệm tĩnh giúp tiết kiệm RAM, truyền được cả file dung lượng lớn.
-- **Toàn vẹn dữ liệu SHA-256**: Hệ thống tự động tính và đối soát mã băm SHA-256 sau khi tải về, hiển thị kết quả xác thực xanh `[ THÀNH CÔNG // SHA-256 KHỚP 100% ]`.
+- **Chia nhỏ khối dữ liệu (Chunking)**: File được chia nhỏ thành các chunk 64 KB (`CHUNK_SIZE`), đọc và stream qua Socket bằng bộ đệm tĩnh giúp tiết kiệm RAM, truyền mượt mà cả file dung lượng lớn.
+- **Toàn vẹn dữ liệu SHA-256**: Hệ thống tự động tính và đối soát mã băm SHA-256 sau khi tải về, hiển thị kết quả xác thực xanh `[ ĐÃ TẢI XONG // SHA-256 TOÀN VẸN 100% ]`.
 
 ---
 
