@@ -11,12 +11,16 @@ import java.util.Optional;
 public final class ClientUtils {
     private ClientUtils() {}
 
-    // Đảm bảo tác vụ luôn chạy trên luồng giao diện JavaFX Application Thread
+    // Đảm bảo tác vụ luôn chạy trên luồng giao diện JavaFX Application Thread (hoặc chạy trực tiếp nếu không có JavaFX Toolkit)
     public static void runOnFxThread(Runnable action) {
-        if (Platform.isFxApplicationThread()) {
+        try {
+            if (Platform.isFxApplicationThread()) {
+                action.run();
+            } else {
+                Platform.runLater(action);
+            }
+        } catch (IllegalStateException e) {
             action.run();
-        } else {
-            Platform.runLater(action);
         }
     }
 
