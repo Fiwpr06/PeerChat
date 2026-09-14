@@ -50,9 +50,6 @@ public class FileTransferController {
             selectFileButton.setDisable(active);
             sendButton.setDisable(active || stagedFile == null);
         });
-
-        // Thiết lập hộp thoại xác nhận khi có file gửi đến
-        fileTransferService.setIncomingRequestListener(this::handleIncomingFilePrompt);
     }
 
     // Thiết lập người nhận file mục tiêu
@@ -93,38 +90,5 @@ public class FileTransferController {
         if (fileTransferService != null) {
             fileTransferService.abortTransfer();
         }
-    }
-
-    // Hiển thị hộp thoại hỏi người dùng có đồng ý nhận file không
-    private void handleIncomingFilePrompt(FileInfo info, FileTransferService.FileAcceptCallback callback) {
-        ClientUtils.runOnFxThread(() -> {
-            String promptText = String.format(
-                    "CÓ YÊU CẦU GỬI FILE MỚI:\n\nTên file: %s\nKích thước: %s\nNgười gửi: %s\n\nBạn có muốn nhận và chọn nơi lưu file không?",
-                    info.getFileName(),
-                    FileUtils.formatFileSize(info.getFileSize()),
-                    info.getSenderName()
-            );
-
-            Optional<ButtonType> result = ClientUtils.showConfirmation(
-                    "PEERCHAT // NHẬN FILE",
-                    "YÊU CẦU NHẬN FILE",
-                    promptText
-            );
-
-            if (result.isPresent() && result.get() == ButtonType.OK) {
-                FileChooser saveChooser = new FileChooser();
-                saveChooser.setTitle("CHỌN NƠI LƯU FILE");
-                saveChooser.setInitialFileName(info.getFileName());
-
-                File dest = saveChooser.showSaveDialog(selectFileButton.getScene().getWindow());
-                if (dest != null) {
-                    callback.onDecision(true, dest);
-                } else {
-                    callback.onDecision(false, null);
-                }
-            } else {
-                callback.onDecision(false, null);
-            }
-        });
     }
 }

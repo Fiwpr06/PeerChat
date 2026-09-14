@@ -17,15 +17,28 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // Dịch vụ điều phối gửi và nhận file phía Client (chia chunk 64KB, kiểm tra SHA-256)
+// Dịch vụ điều phối gửi và nhận file phía Client theo mô hình Store-and-Forward
 public class FileTransferService {
-    // Callback yêu cầu nhận file gửi đến
-    public interface FileRequestListener {
-        void onIncomingFileRequest(FileInfo info, FileAcceptCallback callback);
+    // Callback thông báo tiến trình và kết quả tải file
+    public interface DownloadCallback {
+        void onProgress(double progress, long currentBytes, long totalBytes);
+        void onComplete(boolean success, String hash, String error);
     }
 
-    // Callback quyết định đồng ý hoặc từ chối kèm đường dẫn lưu
-    public interface FileAcceptCallback {
-        void onDecision(boolean accepted, File destinationFile);
+    // Phiên tải file đang hoạt động
+    private static class DownloadSession {
+        final FileInfo info;
+        final File destFile;
+        final FileOutputStream out;
+        final DownloadCallback callback;
+        long bytesReceived = 0;
+
+        DownloadSession(FileInfo info, File destFile, FileOutputStream out, DownloadCallback callback) {
+            this.info = info;
+            this.destFile = destFile;
+            this.out = out;
+            this.callback = callback;
+        }
     }
 
     private final MessageSender sender;
@@ -33,7 +46,7 @@ public class FileTransferService {
     private final String displayName;
     private final ExecutorService transferPool = Executors.newCachedThreadPool();
 
-    // Các thuộc tính quan sát được để gắn kết (bind) với giao diện JavaFX
+    // Thuộc tính quan sát hiển thị trên thanh trạng thái và telemetry panel
     private final ObjectProperty<TransferState> state = new SimpleObjectProperty<>(TransferState.IDLE);
     private final DoubleProperty progress = new SimpleDoubleProperty(0.0);
     private final StringProperty statusText = new SimpleStringProperty("SẴN SÀNG");
@@ -41,23 +54,13 @@ public class FileTransferService {
     private final StringProperty telemetrySpeed = new SimpleStringProperty("0.0 KB/s");
     private final StringProperty checksumResult = new SimpleStringProperty("");
 
-    private File stagingFile;
-    private FileInfo currentSendingInfo;
-    private FileInfo currentReceivingInfo;
-    private FileOutputStream receivingOutputStream;
-    private File receivingFile;
-    private long totalBytesReceived = 0;
+    private final java.util.Map<String, DownloadSession> activeDownloads = new java.util.concurrent.ConcurrentHashMap<>();
     private final AtomicBoolean transferAborted = new AtomicBoolean(false);
-    private FileRequestListener incomingRequestListener;
 
     public FileTransferService(MessageSender sender, String clientId, String displayName) {
         this.sender = sender;
         this.clientId = clientId;
         this.displayName = displayName;
-    }
-
-    public void setIncomingRequestListener(FileRequestListener listener) {
-        this.incomingRequestListener = listener;
     }
 
     public ObjectProperty<TransferState> stateProperty() { return state; }
@@ -67,92 +70,69 @@ public class FileTransferService {
     public StringProperty telemetrySpeedProperty() { return telemetrySpeed; }
     public StringProperty checksumResultProperty() { return checksumResult; }
 
-    // Bắt đầu quy trình gửi file: Tính trước SHA-256 và gửi FILE_REQUEST tới người nhận
+    // Upload file lên Server: tính SHA-256, gửi metadata, stream chunk và báo hoàn tất
     public void stageAndSendFile(File file, String targetClientId) {
         if (file == null || !file.exists() || !file.isFile()) {
-            updateStatus(TransferState.FAILED, "LỖI: File đã chọn không hợp lệ", 0.0);
+            updateStatus(TransferState.FAILED, "LỖI: Tập tin đã chọn không hợp lệ", 0.0);
             return;
         }
 
-        stagingFile = file;
         transferAborted.set(false);
-        updateStatus(TransferState.REQUESTING, "ĐANG TÍNH TOÁN SHA-256...", 0.0);
+        updateStatus(TransferState.REQUESTING, "ĐANG TÍNH MÃ BĂM SHA-256...", 0.0);
         activeFileName.set(file.getName() + " (" + FileUtils.formatFileSize(file.length()) + ")");
         checksumResult.set("");
 
         transferPool.submit(() -> {
             try {
-                // Tính mã băm SHA-256 trước khi gửi
                 String checksum = ChecksumUtils.calculateSHA256(file);
                 long fileSize = file.length();
                 int totalChunks = (int) Math.ceil((double) fileSize / ProtocolConstants.CHUNK_SIZE);
                 if (totalChunks == 0) totalChunks = 1;
 
-                currentSendingInfo = new FileInfo(
+                String target = (targetClientId != null && !targetClientId.isEmpty()) ? targetClientId : ProtocolConstants.TARGET_ALL;
+
+                FileInfo sendingInfo = new FileInfo(
                         file.getName(),
                         fileSize,
                         checksum,
                         clientId,
                         displayName,
-                        targetClientId,
+                        target,
                         totalChunks,
                         ProtocolConstants.CHUNK_SIZE
                 );
 
-                updateStatus(TransferState.WAITING_ACCEPT, "ĐANG CHỜ NGƯỜI NHẬN ĐỒNG Ý...", 0.0);
+                updateStatus(TransferState.TRANSFERRING, "ĐANG TẢI LÊN MÁY CHỦ...", 0.0);
 
-                // Gửi gói tin yêu cầu truyền file
-                ProtocolMessage req = ProtocolMessage.createText(MessageType.FILE_REQUEST, currentSendingInfo.toJson());
-                sender.sendSync(req);
-
-            } catch (IOException e) {
-                updateStatus(TransferState.FAILED, "LỖI: Không thể tính SHA-256: " + e.getMessage(), 0.0);
-            }
-        });
-    }
-
-    // Người nhận đồng ý: Bắt đầu chia nhỏ file thành chunk 64KB và truyền liên tục
-    public void onFileAcceptedByPeer(FileInfo info) {
-        if (stagingFile == null || !stagingFile.exists()) {
-            updateStatus(TransferState.FAILED, "LỖI: Không tìm thấy file trên đĩa", 0.0);
-            return;
-        }
-
-        updateStatus(TransferState.TRANSFERRING, "ĐANG TRUYỀN DỮ LIỆU...", 0.0);
-
-        transferPool.submit(() -> {
-            try {
-                // Gửi thông số metadata của file
-                ProtocolMessage metaMsg = ProtocolMessage.createText(MessageType.FILE_METADATA, currentSendingInfo.toJson());
+                // Gửi metadata lên server
+                ProtocolMessage metaMsg = ProtocolMessage.createText(MessageType.FILE_METADATA, sendingInfo.toJson());
                 sender.sendSync(metaMsg);
 
-                // Đọc file và gửi từng chunk
-                try (InputStream fis = new BufferedInputStream(new FileInputStream(stagingFile))) {
+                // Đọc file và stream chunk lên server
+                try (InputStream fis = new BufferedInputStream(new FileInputStream(file))) {
                     byte[] buffer = new byte[ProtocolConstants.CHUNK_SIZE];
                     int bytesRead;
                     int chunkIndex = 0;
                     long totalBytesSent = 0;
-                    long fileLength = stagingFile.length();
                     long lastSpeedTime = System.currentTimeMillis();
                     long bytesSinceLastSpeed = 0;
 
                     while ((bytesRead = fis.read(buffer)) != -1) {
                         if (transferAborted.get()) {
-                            updateStatus(TransferState.FAILED, "ĐÃ HỦY TRUYỀN FILE", 0.0);
+                            updateStatus(TransferState.FAILED, "ĐÃ HỦY TẢI LÊN", 0.0);
                             return;
                         }
 
                         byte[] chunkPayload = (bytesRead == buffer.length) ? buffer : java.util.Arrays.copyOf(buffer, bytesRead);
-                        ProtocolMessage chunkMsg = ProtocolMessage.createFileData(currentSendingInfo.getFileId(), chunkIndex, chunkPayload);
+                        ProtocolMessage chunkMsg = ProtocolMessage.createFileData(sendingInfo.getFileId(), chunkIndex, chunkPayload);
                         sender.sendSync(chunkMsg);
 
                         chunkIndex++;
                         totalBytesSent += bytesRead;
                         bytesSinceLastSpeed += bytesRead;
 
-                        double currentProgress = fileLength > 0 ? (double) totalBytesSent / fileLength : 1.0;
+                        double currentProgress = fileSize > 0 ? (double) totalBytesSent / fileSize : 1.0;
 
-                        // Cập nhật tốc độ mỗi 300ms
                         long now = System.currentTimeMillis();
                         if (now - lastSpeedTime >= 300) {
                             double elapsedSec = (now - lastSpeedTime) / 1000.0;
@@ -164,87 +144,70 @@ public class FileTransferService {
                         }
 
                         final double prog = currentProgress;
-                        final String stat = String.format("Đã gửi: %d/%d chunk (%.1f%%)",
-                                chunkIndex, currentSendingInfo.getTotalChunks(), prog * 100.0);
+                        final String stat = String.format("Đã gửi: %d/%d chunk (%.1f%%)", chunkIndex, totalChunks, prog * 100.0);
                         ClientUtils.runOnFxThread(() -> {
                             progress.set(prog);
                             statusText.set(stat);
                         });
                     }
 
-                    // Gửi thông báo hoàn tất truyền toàn bộ chunk
-                    ProtocolMessage completeMsg = ProtocolMessage.createText(MessageType.FILE_COMPLETE, currentSendingInfo.toJson());
+                    // Gửi thông báo hoàn tất upload
+                    ProtocolMessage completeMsg = ProtocolMessage.createText(MessageType.FILE_COMPLETE, sendingInfo.toJson());
                     sender.sendSync(completeMsg);
 
-                    updateStatus(TransferState.VERIFYING, "ĐÃ GỬI XONG. CHỜ BÊN NHẬN KIỂM TRA SHA-256...", 1.0);
+                    updateStatus(TransferState.VERIFYING, "ĐÃ TẢI LÊN SERVER. CHỜ XÁC THỰC MÃ BĂM...", 1.0);
                 }
 
             } catch (IOException e) {
-                updateStatus(TransferState.FAILED, "LỖI: Truyền chunk thất bại: " + e.getMessage(), 0.0);
+                updateStatus(TransferState.FAILED, "LỖI TẢI LÊN: " + e.getMessage(), 0.0);
             }
         });
     }
 
-    // Người nhận từ chối nhận file
-    public void onFileRejectedByPeer(FileInfo info) {
-        updateStatus(TransferState.REJECTED, "NGƯỜI NHẬN ĐÃ TỪ CHỐI NHẬN FILE", 0.0);
-    }
-
-    // Xử lý khi có người gửi file đến mình: Hiển thị popup hỏi ý kiến
-    public void onIncomingFileRequest(FileInfo info) {
-        currentReceivingInfo = info;
-        ClientUtils.runOnFxThread(() -> {
-            activeFileName.set(info.getFileName() + " (" + FileUtils.formatFileSize(info.getFileSize()) + ")");
-            statusText.set("CÓ FILE GỬI TỪ " + info.getSenderName());
-            checksumResult.set("");
-
-            if (incomingRequestListener != null) {
-                incomingRequestListener.onIncomingFileRequest(info, (accepted, destFile) -> {
-                    if (accepted && destFile != null) {
-                        try {
-                            receivingFile = destFile;
-                            receivingOutputStream = new FileOutputStream(receivingFile);
-                            totalBytesReceived = 0;
-                            updateStatus(TransferState.TRANSFERRING, "CHUẨN BỊ NHẬN DỮ LIỆU...", 0.0);
-
-                            // Gửi thông báo đồng ý nhận file
-                            ProtocolMessage acceptMsg = ProtocolMessage.createText(MessageType.FILE_ACCEPT, info.toJson());
-                            sender.sendAsync(acceptMsg);
-
-                        } catch (IOException e) {
-                            updateStatus(TransferState.FAILED, "LỖI: Không thể tạo file lưu: " + e.getMessage(), 0.0);
-                        }
-                    } else {
-                        updateStatus(TransferState.IDLE, "ĐÃ TỪ CHỐI NHẬN FILE", 0.0);
-                        ProtocolMessage rejectMsg = ProtocolMessage.createText(MessageType.FILE_REJECT, info.toJson());
-                        sender.sendAsync(rejectMsg);
-                    }
-                });
-            }
-        });
-    }
-
-    // Nhận thông số metadata trước khi các chunk dữ liệu bắt đầu đến
-    public void onIncomingFileMetadata(FileInfo info) {
-        currentReceivingInfo = info;
-        updateStatus(TransferState.TRANSFERRING, "ĐANG NHẬN DỮ LIỆU...", 0.0);
-    }
-
-    // Nhận một chunk nhị phân và ghi trực tiếp vào file trên đĩa
-    public void onIncomingFileData(ProtocolMessage.FileChunk chunk) {
-        if (receivingOutputStream == null || receivingFile == null) return;
+    // Yêu cầu tải file từ Server về máy và lưu vào đích đã chọn
+    public void requestDownload(FileInfo fileInfo, File destinationFile, DownloadCallback callback) {
+        if (fileInfo == null || destinationFile == null) return;
 
         try {
-            receivingOutputStream.write(chunk.data());
-            totalBytesReceived += chunk.data().length;
+            FileOutputStream fos = new FileOutputStream(destinationFile);
+            DownloadSession session = new DownloadSession(fileInfo, destinationFile, fos, callback);
+            activeDownloads.put(fileInfo.getFileId(), session);
 
-            long totalExpected = (currentReceivingInfo != null) ? currentReceivingInfo.getFileSize() : 1;
-            double currentProgress = totalExpected > 0 ? (double) totalBytesReceived / totalExpected : 0.0;
+            activeFileName.set(fileInfo.getFileName() + " (" + FileUtils.formatFileSize(fileInfo.getFileSize()) + ")");
+            updateStatus(TransferState.TRANSFERRING, "ĐANG YÊU CẦU TẢI TỪ MÁY CHỦ...", 0.0);
 
+            // Gửi FILE_DOWNLOAD_REQ lên server
+            ProtocolMessage reqMsg = ProtocolMessage.createText(MessageType.FILE_DOWNLOAD_REQ, "{\"fileId\":\"" + fileInfo.getFileId() + "\"}");
+            sender.sendAsync(reqMsg);
+
+        } catch (IOException e) {
+            if (callback != null) {
+                callback.onComplete(false, "", "Không thể tạo file lưu: " + e.getMessage());
+            }
+            updateStatus(TransferState.FAILED, "LỖI LƯU FILE: " + e.getMessage(), 0.0);
+        }
+    }
+
+    // Tiếp nhận chunk dữ liệu tải về từ Server
+    public void onIncomingFileData(ProtocolMessage.FileChunk chunk) {
+        DownloadSession session = activeDownloads.get(chunk.fileId());
+        if (session == null) return;
+
+        try {
+            session.out.write(chunk.data());
+            session.bytesReceived += chunk.data().length;
+
+            long total = session.info.getFileSize();
+            double currentProgress = total > 0 ? (double) session.bytesReceived / total : 1.0;
             final double prog = Math.min(1.0, currentProgress);
-            final String stat = String.format("Đã nhận: %s / %s (%.1f%%)",
-                    FileUtils.formatFileSize(totalBytesReceived),
-                    FileUtils.formatFileSize(totalExpected),
+
+            if (session.callback != null) {
+                ClientUtils.runOnFxThread(() -> session.callback.onProgress(prog, session.bytesReceived, total));
+            }
+
+            final String stat = String.format("Đang tải: %s / %s (%.1f%%)",
+                    FileUtils.formatFileSize(session.bytesReceived),
+                    FileUtils.formatFileSize(total),
                     prog * 100.0);
 
             ClientUtils.runOnFxThread(() -> {
@@ -253,68 +216,77 @@ public class FileTransferService {
             });
 
         } catch (IOException e) {
-            updateStatus(TransferState.FAILED, "LỖI: Không thể ghi file: " + e.getMessage(), 0.0);
-            closeReceivingStream();
+            updateStatus(TransferState.FAILED, "LỖI GHI DỮ LIỆU: " + e.getMessage(), 0.0);
         }
     }
 
-    // Nhận thông báo hoàn tất: Đóng file, tính lại SHA-256 để đối soát tính toàn vẹn
+    // Hoàn tất tải file: Đóng file, tính lại SHA-256 và đối soát
     public void onIncomingFileComplete(FileInfo info) {
-        closeReceivingStream();
+        DownloadSession session = activeDownloads.remove(info.getFileId());
+        if (session == null) return;
+
+        try {
+            session.out.flush();
+            session.out.close();
+        } catch (IOException ignored) {}
+
         updateStatus(TransferState.VERIFYING, "ĐANG KIỂM TRA MÃ SHA-256...", 1.0);
 
         transferPool.submit(() -> {
             try {
-                String localHash = ChecksumUtils.calculateSHA256(receivingFile);
-                String expectedHash = (currentReceivingInfo != null) ? currentReceivingInfo.getChecksum() : info.getChecksum();
-
-                boolean match = ChecksumUtils.verifyChecksum(expectedHash, localHash);
+                String localHash = ChecksumUtils.calculateSHA256(session.destFile);
+                String expected = session.info.getChecksum();
+                boolean match = (expected == null || expected.isEmpty()) || ChecksumUtils.verifyChecksum(expected, localHash);
 
                 ClientUtils.runOnFxThread(() -> {
                     if (match) {
                         state.set(TransferState.COMPLETED);
-                        statusText.set("TOÀN VẸN DỮ LIỆU // SHA-256 KHỚP 100%");
-                        checksumResult.set("THÀNH CÔNG: " + localHash.substring(0, 16) + "...");
+                        statusText.set("ĐÃ TẢI XONG // SHA-256 TOÀN VẸN 100%");
+                        checksumResult.set("THÀNH CÔNG: " + localHash.substring(0, Math.min(16, localHash.length())) + "...");
+                        if (session.callback != null) {
+                            session.callback.onComplete(true, localHash, null);
+                        }
                     } else {
                         state.set(TransferState.FAILED);
                         statusText.set("DỮ LIỆU BỊ LỖI // SHA-256 KHÔNG KHỚP");
-                        checksumResult.set("LỖI: GỐC=" + expectedHash.substring(0, 8) + "... NHẬN=" + localHash.substring(0, 8) + "...");
+                        checksumResult.set("LỖI MÃ BĂM");
+                        if (session.callback != null) {
+                            session.callback.onComplete(false, localHash, "SHA-256 không khớp");
+                        }
                     }
                 });
 
-                // Phản hồi kết quả đối soát về cho người gửi
-                FileInfo statusReport = new FileInfo();
-                statusReport.setFileId(info.getFileId());
-                statusReport.setSenderId(info.getSenderId());
-                statusReport.setChecksum(match ? "VERIFIED" : "CORRUPT");
-                ProtocolMessage statusMsg = ProtocolMessage.createText(MessageType.FILE_STATUS, statusReport.toJson());
-                sender.sendSync(statusMsg);
-
             } catch (IOException e) {
-                updateStatus(TransferState.FAILED, "LỖI: Không thể kiểm tra SHA-256: " + e.getMessage(), 0.0);
+                updateStatus(TransferState.FAILED, "LỖI TÍNH SHA-256: " + e.getMessage(), 0.0);
+                if (session.callback != null) {
+                    ClientUtils.runOnFxThread(() -> session.callback.onComplete(false, "", e.getMessage()));
+                }
             }
         });
     }
 
-    // Người gửi nhận thông báo kết quả đối soát SHA-256 từ bên nhận
+    // Server phản hồi trạng thái xác thực file upload
     public void onFileStatusReceived(FileInfo info) {
         ClientUtils.runOnFxThread(() -> {
             if ("VERIFIED".equalsIgnoreCase(info.getChecksum())) {
                 state.set(TransferState.COMPLETED);
-                statusText.set("BÊN NHẬN ĐÃ XÁC NHẬN SHA-256 KHỚP 100%");
-                checksumResult.set("KẾT QUẢ: TOÀN VẸN [THÀNH CÔNG]");
+                statusText.set("MÁY CHỦ ĐÃ LƯU TRỮ // ĐÃ PHÁT VÀO PHÒNG CHAT");
+                checksumResult.set("XÁC THỰC MÃ BĂM: THÀNH CÔNG");
             } else {
                 state.set(TransferState.FAILED);
-                statusText.set("BÊN NHẬN BÁO CÁO FILE BỊ LỖI");
-                checksumResult.set("KẾT QUẢ: LỖI TOÀN VẸN [THẤT BẠI]");
+                statusText.set("MÁY CHỦ BÁO CÁO FILE BỊ LỖI MÃ BĂM");
+                checksumResult.set("XÁC THỰC MÃ BĂM: THẤT BẠI");
             }
         });
     }
 
-    // Hủy bỏ quá trình truyền file
+    // Hủy bỏ quá trình truyền tải
     public void abortTransfer() {
         transferAborted.set(true);
-        closeReceivingStream();
+        for (DownloadSession s : activeDownloads.values()) {
+            try { s.out.close(); } catch (IOException ignored) {}
+        }
+        activeDownloads.clear();
         updateStatus(TransferState.IDLE, "ĐÃ HỦY TRUYỀN", 0.0);
     }
 
@@ -324,15 +296,5 @@ public class FileTransferService {
             statusText.set(text);
             progress.set(prog);
         });
-    }
-
-    private void closeReceivingStream() {
-        try {
-            if (receivingOutputStream != null) {
-                receivingOutputStream.flush();
-                receivingOutputStream.close();
-            }
-        } catch (IOException ignored) {}
-        receivingOutputStream = null;
     }
 }

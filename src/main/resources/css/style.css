@@ -305,6 +305,74 @@
     -fx-font-size: 10px;
 }
 
+.message-row-incoming {
+    -fx-alignment: center-left;
+    -fx-fill-height: false;
+}
+
+.message-row-outgoing {
+    -fx-alignment: center-right;
+    -fx-fill-height: false;
+}
+
+.avatar-badge {
+    -fx-background-color: #35332b;
+    -fx-text-fill: #eae7da;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+    -fx-padding: 2px 7px;
+    -fx-background-radius: 2px;
+    -fx-border-color: #1c1b17;
+    -fx-border-width: 1px;
+}
+
+/* Thẻ đính kèm file trong tin nhắn (NieR Style File Card) */
+.file-card {
+    -fx-background-color: #ded9ca;
+    -fx-border-color: #3a372e;
+    -fx-border-width: 1px;
+    -fx-padding: 8px 12px;
+    -fx-spacing: 6px;
+}
+
+.file-card-title {
+    -fx-text-fill: #1c1b17;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.file-card-meta {
+    -fx-text-fill: #615c4f;
+    -fx-font-size: 10px;
+    -fx-font-family: "Consolas", monospace;
+}
+
+.file-card-btn {
+    -fx-background-color: #25241e;
+    -fx-text-fill: #f5f3ec;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 4px 10px;
+    -fx-cursor: hand;
+}
+
+.file-card-btn:hover {
+    -fx-background-color: #b8522e;
+    -fx-text-fill: #ffffff;
+}
+
+.file-card-status-ok {
+    -fx-text-fill: #276620;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.file-card-status-fail {
+    -fx-text-fill: #a1441a;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
 /* ==========================================================================
    THANH TIẾN TRÌNH TRUYỀN FILE (PROGRESSBAR)
    ========================================================================== */

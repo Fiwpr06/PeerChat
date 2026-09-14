@@ -87,6 +87,7 @@
 
                 <!-- Ô nhập tin nhắn và nút gửi -->
                 <HBox spacing="8" alignment="CENTER">
+                    <Button fx:id="attachFileButton" text="📎 GỬI FILE" onAction="#handleAttachFile" styleClass="button"/>
                     <TextField fx:id="messageInputField" promptText="Nhập nội dung tin nhắn..." HBox.hgrow="ALWAYS" onAction="#handleSendMessage"/>
                     <Button fx:id="sendButton" text="GỬI TIN NHẮN" onAction="#handleSendMessage" styleClass="button-action" prefWidth="130.0"/>
                 </HBox>

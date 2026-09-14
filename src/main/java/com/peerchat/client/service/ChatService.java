@@ -65,4 +65,13 @@ public class ChatService {
             }
         });
     }
+
+    // Đồng bộ toàn bộ lịch sử tin nhắn khi kết nối vào phòng
+    public void setHistory(List<Message> history) {
+        if (history == null) return;
+        ClientUtils.runOnFxThread(() -> {
+            messageHistory.clear();
+            messageHistory.addAll(history);
+        });
+    }
 }

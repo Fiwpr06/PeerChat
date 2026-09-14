@@ -22,9 +22,11 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -45,6 +47,7 @@ public class ChatController {
     @FXML private ScrollPane chatScrollPane;
     @FXML private VBox messagesContainer;
     @FXML private TextField messageInputField;
+    @FXML private Button attachFileButton;
     @FXML private Button sendButton;
 
     // Nhúng controller con của phần truyền file
@@ -140,6 +143,9 @@ public class ChatController {
     private void setupChatStream() {
         chatService.getMessageHistory().addListener((ListChangeListener<Message>) change -> {
             while (change.next()) {
+                if (change.wasRemoved() && chatService.getMessageHistory().isEmpty()) {
+                    messagesContainer.getChildren().clear();
+                }
                 if (change.wasAdded()) {
                     for (Message msg : change.getAddedSubList()) {
                         renderMessageCard(msg);
@@ -149,15 +155,32 @@ public class ChatController {
         });
     }
 
-    // Hiển thị một bong bóng tin nhắn lên khung chat
+    // Hiển thị một bong bóng tin nhắn lên khung chat (phân biệt mình vs người khác)
     private void renderMessageCard(Message msg) {
         boolean isOutgoing = chatService.getClientId().equals(msg.getSenderId());
 
-        VBox card = new VBox(3);
+        // HBox bọc toàn bộ dòng tin nhắn để căn lề trái hoặc phải
+        HBox row = new HBox();
+        row.getStyleClass().add(isOutgoing ? "message-row-outgoing" : "message-row-incoming");
+        row.setMaxWidth(Double.MAX_VALUE);
+
+        // Khung card tin nhắn
+        VBox card = new VBox(6);
         card.getStyleClass().add(isOutgoing ? "message-card-outgoing" : "message-card-incoming");
+        card.setMaxWidth(520);
 
         HBox header = new HBox(8);
         header.setAlignment(Pos.CENTER_LEFT);
+
+        if (!isOutgoing) {
+            // Avatar huy hiệu ký tự đầu cho người khác
+            String initial = (msg.getSenderName() != null && !msg.getSenderName().isEmpty())
+                    ? msg.getSenderName().substring(0, 1).toUpperCase()
+                    : "?";
+            Label avatar = new Label(initial);
+            avatar.getStyleClass().add("avatar-badge");
+            header.getChildren().add(avatar);
+        }
 
         Label senderLabel = new Label(isOutgoing ? "BẠN [" + chatService.getDisplayName() + "]" : msg.getSenderName());
         senderLabel.getStyleClass().add(isOutgoing ? "message-header-outgoing" : "message-header-incoming");
@@ -169,17 +192,38 @@ public class ChatController {
         timeLabel.getStyleClass().add("message-timestamp");
 
         header.getChildren().addAll(senderLabel, targetTag, timeLabel);
+        card.getChildren().add(header);
 
-        Label body = new Label(msg.getContent());
+        // Hiển thị nội dung tin nhắn (tin nhắn văn bản hoặc thông báo tệp đã chia sẻ)
+        String text = msg.isFileMessage() && msg.getFileInfo() != null
+                ? "🗎 [TẬP TIN ĐÃ CHIA SẺ] " + msg.getFileInfo().getFileName() + " (" + com.peerchat.shared.util.FileUtils.formatFileSize(msg.getFileInfo().getFileSize()) + ")"
+                : msg.getContent();
+        Label body = new Label(text);
         body.getStyleClass().add("message-body");
         body.setWrapText(true);
+        card.getChildren().add(body);
 
-        card.getChildren().addAll(header, body);
-        messagesContainer.getChildren().add(card);
+        row.getChildren().add(card);
+        messagesContainer.getChildren().add(row);
 
         // Cuộn xuống tin nhắn mới nhất
-        chatScrollPane.layout();
-        chatScrollPane.setVvalue(1.0);
+        Platform.runLater(() -> {
+            chatScrollPane.layout();
+            chatScrollPane.setVvalue(1.0);
+        });
+    }
+
+    // Mở hộp thoại đính kèm tập tin và tải lên máy chủ
+    @FXML
+    private void handleAttachFile() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("CHỌN TẬP TIN GỬI LÊN MÁY CHỦ");
+        File file = chooser.showOpenDialog(chatScrollPane.getScene().getWindow());
+
+        if (file != null && file.exists()) {
+            String targetId = (activeSelectedPeer != null) ? activeSelectedPeer.getClientId() : ProtocolConstants.TARGET_ALL;
+            fileTransferService.stageAndSendFile(file, targetId);
+        }
     }
 
     // Đăng ký nhận các gói tin từ server và phân luồng xử lý
@@ -196,26 +240,14 @@ public class ChatController {
                         Message chatMsg = Message.fromJson(message.getPayloadAsText());
                         chatService.onChatMessageReceived(chatMsg);
                     }
-                    case FILE_REQUEST -> {
-                        FileInfo info = FileInfo.fromJson(message.getPayloadAsText());
-                        fileTransferService.onIncomingFileRequest(info);
-                    }
-                    case FILE_ACCEPT -> {
-                        FileInfo info = FileInfo.fromJson(message.getPayloadAsText());
-                        fileTransferService.onFileAcceptedByPeer(info);
-                    }
-                    case FILE_REJECT -> {
-                        FileInfo info = FileInfo.fromJson(message.getPayloadAsText());
-                        fileTransferService.onFileRejectedByPeer(info);
-                    }
-                    case FILE_METADATA -> {
-                        FileInfo info = FileInfo.fromJson(message.getPayloadAsText());
-                        fileTransferService.onIncomingFileMetadata(info);
+                    case CHAT_HISTORY -> {
+                        List<Message> history = Message.listFromJson(message.getPayloadAsText());
+                        chatService.setHistory(history);
                     }
                     case FILE_DATA -> {
                         fileTransferService.onIncomingFileData(message.parseFileData());
                     }
-                    case FILE_COMPLETE -> {
+                    case FILE_DOWNLOAD_COMPLETE, FILE_COMPLETE -> {
                         FileInfo info = FileInfo.fromJson(message.getPayloadAsText());
                         fileTransferService.onIncomingFileComplete(info);
                     }

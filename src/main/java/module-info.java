@@ -3,6 +3,7 @@ module com.peerchat {
     requires javafx.fxml;
     requires javafx.graphics;
     requires java.logging;
+    requires java.desktop;
 
     opens com.peerchat.client to javafx.graphics, javafx.fxml;
     opens com.peerchat.client.controller to javafx.fxml;
