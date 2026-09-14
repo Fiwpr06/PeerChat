@@ -192,18 +192,21 @@ PeerChat/
 - **Java Development Kit (JDK)**: Phiên bản **21 trở lên** (khuyến nghị Oracle JDK 21 hoặc Eclipse Temurin 21).
 
 ### 5.2. Chạy Nhanh 1-Click Trên Windows (Khuyên Dùng Để Demo)
-Dự án đã tích hợp sẵn 2 kịch bản tự động:
+Dự án đã tích hợp sẵn các kịch bản tự động tối ưu hóa, **ẩn hoàn toàn cửa sổ dòng lệnh đen (Command Prompt / Terminal)**:
 1. **Bước 1 — Khởi động Server**:
-   - Nhấp đúp vào file `START-SERVER.bat`.
-   - Cửa sổ điều khiển Server giao diện NieR:Automata sẽ xuất hiện, tự động khởi chạy socket, hiển thị địa chỉ IP LAN và **Mã kết nối 5 ký tự** cỡ lớn.
+   - Nhấp đúp vào file `START-SERVER.vbs` (hoặc `START-SERVER.bat`).
+   - Cửa sổ điều khiển Server giao diện NieR:Automata sẽ xuất hiện trực tiếp mà không hiển thị cửa sổ terminal màu đen, tự động khởi chạy socket, hiển thị địa chỉ IP LAN và **Mã kết nối 5 ký tự** cỡ lớn.
    - Bạn chỉ cần bấm nút `[ 📋 SAO CHÉP MÃ ]` hoặc `[ 📋 SAO CHÉP IP ]` để chia sẻ cho các máy client chỉ bằng 1 cú nhấp chuột.
 2. **Bước 2 — Khởi động Client 1**:
-   - Nhấp đúp vào file `START-CLIENT.bat`.
+   - Nhấp đúp vào file `START-CLIENT.vbs` (hoặc `START-CLIENT.bat`).
    - Nhập tên hiển thị (ví dụ: `Alice`), dán mã phòng hoặc IP từ server và nhấn **KẾT NỐI HỆ THỐNG**.
 3. **Bước 3 — Khởi động Client 2 (và các Client tiếp theo)**:
-   - Tiếp tục nhấp đúp file `START-CLIENT.bat` một lần nữa để mở cửa sổ thứ hai.
+   - Tiếp tục nhấp đúp file `START-CLIENT.vbs` (hoặc `START-CLIENT.bat`) một lần nữa để mở cửa sổ thứ hai.
    - Nhập tên hiển thị (ví dụ: `Bob`), dán mã phòng và nhấn **KẾT NỐI HỆ THỐNG**.
    - Hai client giờ đây đã thấy nhau trên danh sách trực tuyến và có thể bắt đầu chat hoặc gửi file!
+
+> [!TIP]
+> **Khởi chạy không hiện Terminal**: Khuyên dùng trực tiếp file `START-SERVER.vbs` và `START-CLIENT.vbs` để chạy ứng dụng giao diện mượt mà 100% như các phần mềm desktop chuyên nghiệp (hoàn toàn không bật cửa sổ dòng lệnh). Cả 2 file `.bat` cũng đã được tối ưu để tự động ẩn terminal khi bấm chạy.
 
 ### 5.3. Chạy Bằng Dòng Lệnh Terminal / PowerShell
 
