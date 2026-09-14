@@ -219,6 +219,42 @@
     -fx-border-width: 2px;
 }
 
+.text-area {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 0px;
+    -fx-border-color: #4a463a;
+    -fx-border-width: 1px;
+    -fx-border-radius: 0px;
+    -fx-text-fill: #1c1b17;
+    -fx-prompt-text-fill: #7d7767;
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-padding: 3px;
+}
+
+.text-area .content {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 0px;
+}
+
+.text-area:focused {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #b8522e;
+    -fx-border-width: 2px;
+}
+
+.text-area:focused .content {
+    -fx-background-color: #ffffff;
+}
+
+/* Hiệu ứng viền nổi bật khi kéo thả tập tin vào vùng chat hoặc ô nhập */
+.drag-over-active {
+    -fx-border-color: #b8522e !important;
+    -fx-border-style: dashed !important;
+    -fx-border-width: 2px !important;
+    -fx-background-color: #ded8c7 !important;
+}
+
 /* ==========================================================================
    DANH SÁCH CLIENT ONLINE (LISTVIEW & LISTCELL)
    ========================================================================== */

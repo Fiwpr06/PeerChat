@@ -16,13 +16,19 @@ import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -31,9 +37,17 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-// Điều khiển màn hình chat và quản lý người dùng
+// Điều khiển màn hình chat chính và quản lý tương tác người dùng
 public class ChatController {
     private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    // Kênh chung mặc định cố định ở đầu danh sách
+    private static final ClientInfo CHANNEL_BROADCAST = new ClientInfo(
+            ProtocolConstants.TARGET_ALL,
+            "● KÊNH CHUNG (TẤT CẢ PHÒNG)",
+            "ALL",
+            0
+    );
 
     @FXML private Label nodeCallsignLabel;
     @FXML private Label serverCoordinatesLabel;
@@ -42,15 +56,16 @@ public class ChatController {
     @FXML private Label channelTargetLabel;
     @FXML private Label systemClockLabel;
 
-    @FXML private Button broadcastButton;
+    @FXML private Button toggleRepoButton;
+    @FXML private SplitPane mainSplitPane;
     @FXML private ListView<ClientInfo> peersListView;
     @FXML private ScrollPane chatScrollPane;
     @FXML private VBox messagesContainer;
-    @FXML private TextField messageInputField;
-    @FXML private Button attachFileButton;
+    @FXML private TextArea messageInputField;
     @FXML private Button sendButton;
 
-    // Nhúng controller con của phần truyền file
+    // Nhúng controller con của phần kho tài liệu phòng
+    @FXML private VBox fileTransfer;
     @FXML private FileTransferController fileTransferController;
 
     private ClientSocket clientSocket;
@@ -59,7 +74,9 @@ public class ChatController {
     private ChatService chatService;
     private FileTransferService fileTransferService;
 
+    private final ObservableList<ClientInfo> displayPeers = FXCollections.observableArrayList();
     private ClientInfo activeSelectedPeer = null;
+    private boolean isRepoOpen = true;
     private Timeline clockTimeline;
 
     // Khởi tạo dữ liệu và kết nối dịch vụ cho màn hình chat
@@ -80,19 +97,28 @@ public class ChatController {
         carrierStatusLabel.setText("ĐÃ KẾT NỐI");
 
         if (fileTransferController != null) {
-            fileTransferController.initService(fileTransferService);
-            fileTransferController.setSelectedTarget(null);
+            fileTransferController.initData(fileTransferService, chatService, this::handleToggleRepo);
         }
 
         setupPeerDirectory();
         setupChatStream();
+        setupDragAndDrop();
+        setupKeyHandlers();
         setupNetworkListener();
         startSystemClock();
     }
 
-    // Thiết lập danh sách người dùng đang online
+    // Thiết lập danh sách người dùng với hàng mục Kênh Chung cố định ở đầu
     private void setupPeerDirectory() {
-        peersListView.setItems(chatService.getOnlinePeers());
+        peersListView.setItems(displayPeers);
+        rebuildDisplayPeers();
+
+        // Lắng nghe thay đổi danh sách online từ chatService
+        chatService.getOnlinePeers().addListener((ListChangeListener<ClientInfo>) c -> {
+            rebuildDisplayPeers();
+            int count = chatService.getOnlinePeers().size();
+            peerCountLabel.setText(count + " NGƯỜI DÙNG ONLINE");
+        });
 
         // Định dạng hiển thị từng dòng người dùng
         peersListView.setCellFactory(param -> new ListCell<>() {
@@ -106,36 +132,119 @@ public class ChatController {
                     HBox cellBox = new HBox(8);
                     cellBox.setAlignment(Pos.CENTER_LEFT);
 
-                    Label statusDot = new Label("■");
-                    statusDot.setStyle(isSelected() ? "-fx-text-fill: #b8522e; -fx-font-size: 10px;" : "-fx-text-fill: #3e7238; -fx-font-size: 10px;");
+                    boolean isBroadcast = ProtocolConstants.TARGET_ALL.equals(item.getClientId());
+
+                    Label statusDot = new Label(isBroadcast ? "●" : "■");
+                    if (isBroadcast) {
+                        statusDot.setStyle(isSelected() ? "-fx-text-fill: #b8522e; -fx-font-size: 11px;" : "-fx-text-fill: #1f4f6e; -fx-font-size: 11px;");
+                    } else {
+                        statusDot.setStyle(isSelected() ? "-fx-text-fill: #b8522e; -fx-font-size: 10px;" : "-fx-text-fill: #3e7238; -fx-font-size: 10px;");
+                    }
 
                     Label nameLabel = new Label(item.getDisplayName());
                     nameLabel.setStyle(isSelected() ? "-fx-text-fill: #ffffff; -fx-font-weight: bold;" : "-fx-text-fill: #1c1b17; -fx-font-weight: bold;");
 
-                    Label coordLabel = new Label("[" + item.getCoordinates() + "]");
-                    coordLabel.setStyle(isSelected() ? "-fx-text-fill: #c5c0af; -fx-font-size: 10px;" : "-fx-text-fill: #615c4f; -fx-font-size: 10px;");
+                    cellBox.getChildren().addAll(statusDot, nameLabel);
 
-                    cellBox.getChildren().addAll(statusDot, nameLabel, coordLabel);
+                    if (!isBroadcast) {
+                        Label coordLabel = new Label("[" + item.getCoordinates() + "]");
+                        coordLabel.setStyle(isSelected() ? "-fx-text-fill: #c5c0af; -fx-font-size: 10px;" : "-fx-text-fill: #615c4f; -fx-font-size: 10px;");
+                        cellBox.getChildren().add(coordLabel);
+                    }
+
                     setGraphic(cellBox);
                 }
             }
         });
 
-        // Xử lý khi chọn người dùng để chat riêng
+        // Xử lý khi chọn người dùng để chat riêng hoặc quay về kênh chung
         peersListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) {
+            if (newVal == null || ProtocolConstants.TARGET_ALL.equals(newVal.getClientId())) {
+                activeSelectedPeer = null;
+                channelTargetLabel.setText("KÊNH CHUNG (TẤT CẢ PHÒNG)");
+            } else {
                 activeSelectedPeer = newVal;
                 channelTargetLabel.setText("CHAT RIÊNG VỚI // " + newVal.getDisplayName() + " [" + newVal.getCoordinates() + "]");
-                if (fileTransferController != null) {
-                    fileTransferController.setSelectedTarget(newVal);
-                }
             }
         });
 
-        // Cập nhật số lượng người online khi danh sách thay đổi
-        chatService.getOnlinePeers().addListener((ListChangeListener<ClientInfo>) c -> {
-            int count = chatService.getOnlinePeers().size();
-            peerCountLabel.setText(count + " NGƯỜI DÙNG ONLINE");
+        // Mặc định chọn dòng đầu tiên (Kênh chung)
+        peersListView.getSelectionModel().select(0);
+    }
+
+    // Tái cấu trúc danh sách hiển thị với Kênh Chung luôn ở dòng đầu
+    private void rebuildDisplayPeers() {
+        ClientInfo currentSelected = peersListView.getSelectionModel().getSelectedItem();
+        displayPeers.clear();
+        displayPeers.add(CHANNEL_BROADCAST);
+        displayPeers.addAll(chatService.getOnlinePeers());
+
+        if (currentSelected != null && !ProtocolConstants.TARGET_ALL.equals(currentSelected.getClientId())) {
+            peersListView.getSelectionModel().select(currentSelected);
+        } else {
+            peersListView.getSelectionModel().select(0);
+        }
+    }
+
+    // Cấu hình tính năng kéo thả file trực tiếp vào khung chat hoặc ô nhập tin nhắn
+    private void setupDragAndDrop() {
+        setupDragAndDropForNode(chatScrollPane);
+        setupDragAndDropForNode(messageInputField);
+    }
+
+    // Đăng ký sự kiện Drag and Drop cho từng vùng giao diện
+    private void setupDragAndDropForNode(Node node) {
+        node.setOnDragOver(event -> {
+            if (event.getGestureSource() != node && event.getDragboard().hasFiles()) {
+                event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+                if (!node.getStyleClass().contains("drag-over-active")) {
+                    node.getStyleClass().add("drag-over-active");
+                }
+            }
+            event.consume();
+        });
+
+        node.setOnDragExited(event -> {
+            node.getStyleClass().remove("drag-over-active");
+            event.consume();
+        });
+
+        node.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles()) {
+                success = true;
+                for (File file : db.getFiles()) {
+                    stageAndSendDroppedFile(file);
+                }
+            }
+            node.getStyleClass().remove("drag-over-active");
+            event.setDropCompleted(success);
+            event.consume();
+        });
+    }
+
+    // Đẩy tập tin kéo thả lên server để chia sẻ
+    private void stageAndSendDroppedFile(File file) {
+        if (file != null && file.exists() && file.isFile()) {
+            String targetId = (activeSelectedPeer != null) ? activeSelectedPeer.getClientId() : ProtocolConstants.TARGET_ALL;
+            fileTransferService.stageAndSendFile(file, targetId);
+        }
+    }
+
+    // Cài đặt phím tắt bàn phím (Enter: Gửi tin nhắn, Shift+Enter: Xuống dòng)
+    private void setupKeyHandlers() {
+        messageInputField.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                if (event.isShiftDown()) {
+                    int caret = messageInputField.getCaretPosition();
+                    messageInputField.insertText(caret, "\n");
+                    event.consume();
+                } else {
+                    event.consume();
+                    handleSendMessage();
+                }
+            }
         });
     }
 
@@ -155,7 +264,7 @@ public class ChatController {
         });
     }
 
-    // Hiển thị một bong bóng tin nhắn lên khung chat (phân biệt mình vs người khác)
+    // Hiển thị một thẻ tin nhắn lên khung chat (phân biệt mình gửi vs người khác gửi)
     private void renderMessageCard(Message msg) {
         boolean isOutgoing = chatService.getClientId().equals(msg.getSenderId());
 
@@ -213,19 +322,6 @@ public class ChatController {
         });
     }
 
-    // Mở hộp thoại đính kèm tập tin và tải lên máy chủ
-    @FXML
-    private void handleAttachFile() {
-        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
-        chooser.setTitle("CHỌN TẬP TIN GỬI LÊN MÁY CHỦ");
-        File file = chooser.showOpenDialog(chatScrollPane.getScene().getWindow());
-
-        if (file != null && file.exists()) {
-            String targetId = (activeSelectedPeer != null) ? activeSelectedPeer.getClientId() : ProtocolConstants.TARGET_ALL;
-            fileTransferService.stageAndSendFile(file, targetId);
-        }
-    }
-
     // Đăng ký nhận các gói tin từ server và phân luồng xử lý
     private void setupNetworkListener() {
         messageReceiver.addListener(new MessageReceiver.MessageListener() {
@@ -274,14 +370,20 @@ public class ChatController {
         messageReceiver.start();
     }
 
-    // Chọn lại chế độ chat chung cho toàn phòng
+    // Ẩn/hiện panel Kho Tài Liệu Phòng để mở rộng khung chat
     @FXML
-    private void handleSelectBroadcast() {
-        peersListView.getSelectionModel().clearSelection();
-        activeSelectedPeer = null;
-        channelTargetLabel.setText("KÊNH CHUNG (TẤT CẢ)");
-        if (fileTransferController != null) {
-            fileTransferController.setSelectedTarget(null);
+    private void handleToggleRepo() {
+        if (isRepoOpen) {
+            mainSplitPane.getItems().remove(fileTransfer);
+            toggleRepoButton.setText("📁 KHO TÀI LIỆU");
+            isRepoOpen = false;
+        } else {
+            if (!mainSplitPane.getItems().contains(fileTransfer)) {
+                mainSplitPane.getItems().add(fileTransfer);
+                mainSplitPane.setDividerPositions(0.22, 0.72);
+            }
+            toggleRepoButton.setText("📁 ĐÓNG KHO");
+            isRepoOpen = true;
         }
     }
 
@@ -325,3 +427,4 @@ public class ChatController {
         clockTimeline.play();
     }
 }
+

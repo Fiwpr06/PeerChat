@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
@@ -35,13 +36,14 @@
             <Label text="Trạng thái:" styleClass="telemetry-label"/>
             <Label fx:id="carrierStatusLabel" text="ĐÃ KẾT NỐI" styleClass="telemetry-value-nominal"/>
 
+            <Button fx:id="toggleRepoButton" text="📁 KHO TÀI LIỆU" onAction="#handleToggleRepo" styleClass="button"/>
             <Button text="NGẮT KẾT NỐI" onAction="#handleDisconnect" styleClass="button-danger"/>
         </HBox>
     </top>
 
     <!-- Khu vực làm việc chính 3 cột -->
     <center>
-        <SplitPane dividerPositions="0.25, 0.70">
+        <SplitPane fx:id="mainSplitPane" dividerPositions="0.22, 0.72">
             <!-- Cột trái: Danh sách Client đang online -->
             <VBox styleClass="terminal-panel" spacing="8">
                 <padding>
@@ -53,10 +55,6 @@
                     <Label fx:id="peerCountLabel" text="0 ONLINE" styleClass="telemetry-value-nominal"/>
                 </HBox>
 
-                <Button fx:id="broadcastButton" text="GỬI TẤT CẢ (BROADCAST)" onAction="#handleSelectBroadcast"
-                        maxWidth="Infinity" styleClass="button-action"/>
-
-                <Label text="Chọn người nhận trực tiếp:" styleClass="telemetry-label"/>
                 <ListView fx:id="peersListView" VBox.vgrow="ALWAYS"/>
             </VBox>
 
@@ -73,10 +71,10 @@
                     </padding>
                     <Label text="Kênh nhắn tin:" styleClass="telemetry-label"/>
                     <Region prefWidth="10"/>
-                    <Label fx:id="channelTargetLabel" text="TẤT CẢ (GỬI CHUNG)" styleClass="telemetry-value-cyan"/>
+                    <Label fx:id="channelTargetLabel" text="KÊNH CHUNG (TẤT CẢ PHÒNG)" styleClass="telemetry-value-cyan"/>
                 </HBox>
 
-                <!-- Danh sách tin nhắn cuộn -->
+                <!-- Danh sách tin nhắn cuộn (Hỗ trợ kéo thả tập tin trực tiếp) -->
                 <ScrollPane fx:id="chatScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="NEVER">
                     <VBox fx:id="messagesContainer" spacing="8">
                         <padding>
@@ -85,11 +83,11 @@
                     </VBox>
                 </ScrollPane>
 
-                <!-- Ô nhập tin nhắn và nút gửi -->
-                <HBox spacing="8" alignment="CENTER">
-                    <Button fx:id="attachFileButton" text="📎 GỬI FILE" onAction="#handleAttachFile" styleClass="button"/>
-                    <TextField fx:id="messageInputField" promptText="Nhập nội dung tin nhắn..." HBox.hgrow="ALWAYS" onAction="#handleSendMessage"/>
-                    <Button fx:id="sendButton" text="GỬI TIN NHẮN" onAction="#handleSendMessage" styleClass="button-action" prefWidth="130.0"/>
+                <!-- Ô nhập tin nhắn đa dòng và phím tắt Enter / Shift+Enter -->
+                <HBox spacing="8" alignment="BOTTOM_CENTER">
+                    <TextArea fx:id="messageInputField" promptText="Nhập tin nhắn (Enter: Gửi, Shift+Enter: Xuống dòng, Kéo thả file vào đây)..."
+                              HBox.hgrow="ALWAYS" prefRowCount="2" maxHeight="70" wrapText="true"/>
+                    <Button fx:id="sendButton" text="GỬI" onAction="#handleSendMessage" styleClass="button-action" prefWidth="90.0" prefHeight="55.0"/>
                 </HBox>
             </VBox>
 
