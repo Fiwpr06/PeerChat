@@ -43,9 +43,9 @@
 
     <!-- Khu vực làm việc chính 3 cột -->
     <center>
-        <SplitPane fx:id="mainSplitPane" dividerPositions="0.13, 0.80">
-            <!-- Cột trái: Danh sách Client đang online (Rút gọn còn 1/2) -->
-            <VBox styleClass="terminal-panel" spacing="8" minWidth="110.0" prefWidth="140.0">
+        <SplitPane fx:id="mainSplitPane" dividerPositions="0.16, 0.80">
+            <!-- Cột trái: Danh sách Client online và Nhóm Multicast -->
+            <VBox styleClass="terminal-panel" spacing="8" minWidth="130.0" prefWidth="165.0">
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
@@ -55,7 +55,16 @@
                     <Label fx:id="peerCountLabel" text="0" styleClass="telemetry-value-nominal"/>
                 </HBox>
 
-                <ListView fx:id="peersListView" VBox.vgrow="ALWAYS"/>
+                <ListView fx:id="peersListView" VBox.vgrow="ALWAYS" prefHeight="220.0"/>
+
+                <HBox alignment="CENTER_LEFT" style="-fx-padding: 6 0 2 0;">
+                    <Label text="[ NHÓM MULTICAST ]" styleClass="panel-header"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="createGroupButton" text="+ TẠO" onAction="#handleCreateGroup"
+                            styleClass="button" style="-fx-font-size: 10px; -fx-padding: 2 6;"/>
+                </HBox>
+
+                <ListView fx:id="groupsListView" VBox.vgrow="ALWAYS" prefHeight="180.0"/>
             </VBox>
 
             <!-- Cột giữa: Luồng tin nhắn chat và ô nhập -->

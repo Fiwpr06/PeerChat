@@ -8,6 +8,7 @@ import com.peerchat.client.service.FileTransferService;
 import com.peerchat.client.util.ClientUtils;
 import com.peerchat.shared.model.ClientInfo;
 import com.peerchat.shared.model.FileInfo;
+import com.peerchat.shared.model.GroupInfo;
 import com.peerchat.shared.model.Message;
 import com.peerchat.shared.protocol.MessageType;
 import com.peerchat.shared.protocol.ProtocolConstants;
@@ -73,6 +74,8 @@ public class ChatController {
     @FXML private Button toggleRepoButton;
     @FXML private SplitPane mainSplitPane;
     @FXML private ListView<ClientInfo> peersListView;
+    @FXML private ListView<GroupInfo> groupsListView;
+    @FXML private Button createGroupButton;
     @FXML private ScrollPane chatScrollPane;
     @FXML private VBox messagesContainer;
     @FXML private HBox disconnectBanner;
@@ -92,6 +95,7 @@ public class ChatController {
 
     private final ObservableList<ClientInfo> displayPeers = FXCollections.observableArrayList();
     private ClientInfo activeSelectedPeer = null;
+    private GroupInfo activeSelectedGroup = null;
     private boolean isRepoOpen = true;
     private Timeline clockTimeline;
 
@@ -117,6 +121,7 @@ public class ChatController {
         }
 
         setupPeerDirectory();
+        setupGroupDirectory();
         setupChatStream();
         setupDragAndDrop();
         setupKeyHandlers();
@@ -175,18 +180,101 @@ public class ChatController {
 
         // Xử lý khi chọn người dùng để chat riêng hoặc quay về kênh chung
         peersListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal == null || ProtocolConstants.TARGET_ALL.equals(newVal.getClientId())) {
-                activeSelectedPeer = null;
-                channelTargetLabel.setText("KÊNH CHUNG");
-            } else {
-                activeSelectedPeer = newVal;
-                channelTargetLabel.setText("TRÒ CHUYỆN RIÊNG VỚI: " + newVal.getDisplayName() + " [" + newVal.getCoordinates() + "]");
+            if (newVal != null) {
+                activeSelectedGroup = null;
+                if (groupsListView != null) {
+                    groupsListView.getSelectionModel().clearSelection();
+                }
+                if (ProtocolConstants.TARGET_ALL.equals(newVal.getClientId())) {
+                    activeSelectedPeer = null;
+                    channelTargetLabel.setText("KÊNH CHUNG");
+                } else {
+                    activeSelectedPeer = newVal;
+                    channelTargetLabel.setText("TRÒ CHUYỆN RIÊNG VỚI: " + newVal.getDisplayName() + " [" + newVal.getCoordinates() + "]");
+                }
+                reloadMessagesForActiveChannel();
             }
-            reloadMessagesForActiveChannel();
         });
 
         // Mặc định chọn dòng đầu tiên (Kênh chung)
         peersListView.getSelectionModel().select(0);
+    }
+
+    // Thiết lập danh sách nhóm Multicast và bộ lắng nghe tương tác
+    private void setupGroupDirectory() {
+        if (groupsListView == null) return;
+        groupsListView.setItems(chatService.getAvailableGroups());
+
+        // Định dạng hiển thị từng nhóm Multicast
+        groupsListView.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(GroupInfo item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox cellBox = new HBox(6);
+                    cellBox.setAlignment(Pos.CENTER_LEFT);
+
+                    Label icon = new Label("◈");
+                    icon.setStyle(isSelected() ? "-fx-text-fill: #b8522e; -fx-font-size: 11px;" : "-fx-text-fill: #1f4f6e; -fx-font-size: 11px;");
+
+                    Label nameLabel = new Label(item.getGroupName());
+                    nameLabel.setStyle(isSelected() ? "-fx-text-fill: #ffffff; -fx-font-weight: bold;" : "-fx-text-fill: #1c1b17; -fx-font-weight: bold;");
+
+                    Label countLabel = new Label("(" + item.getMemberCount() + ")");
+                    countLabel.setStyle("-fx-text-fill: #615c4f; -fx-font-size: 10px;");
+
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                    boolean isMember = item.hasMember(chatService.getClientId());
+                    Button actionBtn = new Button(isMember ? "RỜI" : "VÀO");
+                    actionBtn.getStyleClass().add(isMember ? "button-danger" : "button");
+                    actionBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 6;");
+                    actionBtn.setOnAction(e -> {
+                        e.consume();
+                        if (isMember) {
+                            chatService.sendLeaveGroup(item.getGroupId());
+                        } else {
+                            chatService.sendJoinGroup(item.getGroupId());
+                        }
+                    });
+
+                    cellBox.getChildren().addAll(icon, nameLabel, countLabel, spacer, actionBtn);
+                    setGraphic(cellBox);
+                }
+            }
+        });
+
+        // Xử lý khi chọn một nhóm Multicast để trò chuyện
+        groupsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                activeSelectedGroup = newVal;
+                activeSelectedPeer = null;
+                peersListView.getSelectionModel().clearSelection();
+                channelTargetLabel.setText("NHÓM: #" + newVal.getGroupName() + " (" + newVal.getMemberCount() + " thành viên)");
+                reloadMessagesForActiveChannel();
+            }
+        });
+    }
+
+    // Mở hộp thoại tạo nhóm Multicast mới
+    @FXML
+    private void handleCreateGroup() {
+        TextInputDialog dialog = new TextInputDialog("Nhóm-" + (chatService.getAvailableGroups().size() + 1));
+        dialog.setTitle("PeerChat - Tạo nhóm Multicast");
+        dialog.setHeaderText("TẠO NHÓM MULTICAST QUA TCP");
+        dialog.setContentText("Nhập tên nhóm:");
+        try {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        } catch (Exception ignored) {}
+        dialog.showAndWait().ifPresent(name -> {
+            if (!name.trim().isEmpty()) {
+                chatService.sendCreateGroup(name.trim());
+            }
+        });
     }
 
     // Tái cấu trúc danh sách hiển thị với Kênh Chung luôn ở dòng đầu
@@ -198,12 +286,12 @@ public class ChatController {
 
         if (currentSelected != null && !ProtocolConstants.TARGET_ALL.equals(currentSelected.getClientId())) {
             peersListView.getSelectionModel().select(currentSelected);
-        } else {
+        } else if (activeSelectedGroup == null) {
             peersListView.getSelectionModel().select(0);
         }
     }
 
-    // Tải lại các tin nhắn tương ứng với kênh đang mở (Kênh chung hoặc Chat riêng)
+    // Tải lại các tin nhắn tương ứng với kênh đang mở (Kênh chung, Nhóm hoặc Chat riêng)
     private void reloadMessagesForActiveChannel() {
         messagesContainer.getChildren().clear();
         for (Message msg : chatService.getMessageHistory()) {
@@ -217,9 +305,12 @@ public class ChatController {
     private boolean isMessageBelongToActiveChannel(Message msg) {
         if (msg == null) return false;
         String myId = chatService.getClientId();
-        if (activeSelectedPeer == null) {
-            // Kênh chung: chỉ nhận các tin nhắn gửi tới ALL
-            return !msg.isDirect() || ProtocolConstants.TARGET_ALL.equalsIgnoreCase(msg.getTargetId());
+        if (activeSelectedGroup != null) {
+            // Đang mở kênh nhóm: chỉ hiển thị tin nhắn gửi đến nhóm này
+            return activeSelectedGroup.getGroupId().equals(msg.getTargetId());
+        } else if (activeSelectedPeer == null) {
+            // Kênh chung: chỉ nhận các tin nhắn gửi tới ALL (không nhận tin nhóm hay tin riêng)
+            return !msg.isDirect() && (msg.getTargetId() == null || ProtocolConstants.TARGET_ALL.equalsIgnoreCase(msg.getTargetId()));
         } else {
             // Chat riêng: chỉ nhận tin trao đổi giữa tôi và activeSelectedPeer
             String peerId = activeSelectedPeer.getClientId();
@@ -286,7 +377,14 @@ public class ChatController {
                     imageCache.put(file.getName(), new Image(file.toURI().toString()));
                 } catch (Exception ignored) {}
             }
-            String targetId = (activeSelectedPeer != null) ? activeSelectedPeer.getClientId() : ProtocolConstants.TARGET_ALL;
+            String targetId;
+            if (activeSelectedGroup != null) {
+                targetId = activeSelectedGroup.getGroupId();
+            } else if (activeSelectedPeer != null) {
+                targetId = activeSelectedPeer.getClientId();
+            } else {
+                targetId = ProtocolConstants.TARGET_ALL;
+            }
             fileTransferService.stageAndSendFile(file, targetId);
         }
     }
@@ -355,7 +453,12 @@ public class ChatController {
         Label senderLabel = new Label(isOutgoing ? "BẠN [" + chatService.getDisplayName() + "]" : msg.getSenderName());
         senderLabel.getStyleClass().add(isOutgoing ? "message-header-outgoing" : "message-header-incoming");
 
-        Label targetTag = new Label(msg.isDirect() ? "[RIÊNG]" : "[CHUNG]");
+        Label targetTag;
+        if (msg.getTargetId() != null && msg.getTargetId().startsWith("grp_")) {
+            targetTag = new Label("[NHÓM]");
+        } else {
+            targetTag = new Label(msg.isDirect() ? "[RIÊNG]" : "[CHUNG]");
+        }
         targetTag.setStyle("-fx-text-fill: #615c4f; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         Label timeLabel = new Label(msg.getFormattedTime());
@@ -631,6 +734,21 @@ public class ChatController {
                         FileInfo info = FileInfo.fromJson(message.getPayloadAsText());
                         fileTransferService.onFileStatusReceived(info);
                     }
+                    case GROUP_LIST_UPDATE -> {
+                        List<GroupInfo> groups = GroupInfo.listFromJson(message.getPayloadAsText());
+                        chatService.updateGroupList(groups);
+                        if (activeSelectedGroup != null) {
+                            for (GroupInfo g : groups) {
+                                if (g.getGroupId().equals(activeSelectedGroup.getGroupId())) {
+                                    activeSelectedGroup = g;
+                                    ClientUtils.runOnFxThread(() ->
+                                        channelTargetLabel.setText("NHÓM: #" + g.getGroupName() + " (" + g.getMemberCount() + " thành viên)")
+                                    );
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     default -> {}
                 }
             }
@@ -667,7 +785,7 @@ public class ChatController {
         } else {
             if (!mainSplitPane.getItems().contains(fileTransfer)) {
                 mainSplitPane.getItems().add(fileTransfer);
-                mainSplitPane.setDividerPositions(0.13, 0.80);
+                mainSplitPane.setDividerPositions(0.16, 0.80);
             }
             toggleRepoButton.setText("📁 ĐÓNG KHO");
             isRepoOpen = true;
@@ -680,7 +798,14 @@ public class ChatController {
         String content = messageInputField.getText();
         if (content == null || content.trim().isEmpty()) return;
 
-        String targetId = (activeSelectedPeer != null) ? activeSelectedPeer.getClientId() : ProtocolConstants.TARGET_ALL;
+        String targetId;
+        if (activeSelectedGroup != null) {
+            targetId = activeSelectedGroup.getGroupId();
+        } else if (activeSelectedPeer != null) {
+            targetId = activeSelectedPeer.getClientId();
+        } else {
+            targetId = ProtocolConstants.TARGET_ALL;
+        }
         chatService.sendMessage(content, targetId);
         messageInputField.clear();
         messageInputField.requestFocus();

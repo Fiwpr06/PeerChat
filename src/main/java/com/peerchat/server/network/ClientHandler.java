@@ -164,6 +164,18 @@ public class ClientHandler implements Runnable {
                 }
                 fileTransferService.handleFileDownloadRequest(fileId, clientId);
             }
+            case CREATE_GROUP -> {
+                String groupName = msg.getPayloadAsText();
+                connectionManager.createGroup(groupName, clientId);
+            }
+            case JOIN_GROUP -> {
+                String groupId = msg.getPayloadAsText().trim();
+                connectionManager.joinGroup(groupId, clientId);
+            }
+            case LEAVE_GROUP -> {
+                String groupId = msg.getPayloadAsText().trim();
+                connectionManager.leaveGroup(groupId, clientId);
+            }
             case PING -> {
                 try {
                     new ProtocolMessage(MessageType.PONG, new byte[0]).writeTo(out);

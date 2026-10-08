@@ -6,10 +6,12 @@ import com.peerchat.shared.protocol.MessageType;
 import com.peerchat.shared.protocol.ProtocolConstants;
 import com.peerchat.shared.protocol.ProtocolMessage;
 
+import com.peerchat.shared.model.GroupInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,6 +20,10 @@ import java.util.logging.Logger;
 public class ConnectionManager {
     private static final Logger LOGGER = Logger.getLogger(ConnectionManager.class.getName());
     private final Map<String, ConnectedClient> clients = new ConcurrentHashMap<>();
+
+    // Quản lý các nhóm Multicast tầng ứng dụng (ALM Group Directory)
+    private final Map<String, GroupInfo> groups = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> groupMembers = new ConcurrentHashMap<>();
 
     // Giao diện lắng nghe sự kiện thêm/bớt client cho Server UI
     public interface ClientListener {
@@ -29,12 +35,15 @@ public class ConnectionManager {
     public void addClientListener(ClientListener l) { clientListeners.add(l); }
     public void removeClientListener(ClientListener l) { clientListeners.remove(l); }
 
-    // Đăng ký client mới và phát danh sách online cho mọi người
+    // Đăng ký client mới, gửi danh sách nhóm hiện có và phát danh sách online cho mọi người
     public void addClient(ConnectedClient client) {
         clients.put(client.getClientId(), client);
         LOGGER.info("[NODE_JOIN] Client connected: " + client);
         clientListeners.forEach(l -> l.onClientAdded(client.getInfo()));
         broadcastClientList();
+        if (!groups.isEmpty()) {
+            sendGroupListTo(client);
+        }
     }
 
     // Xóa client khi ngắt kết nối và cập nhật lại danh sách cho các client khác
@@ -45,6 +54,23 @@ public class ConnectionManager {
             client.close();
             clientListeners.forEach(l -> l.onClientRemoved(clientId));
             broadcastClientList();
+
+            // Dọn dẹp thành viên trong các nhóm Multicast
+            boolean groupChanged = false;
+            for (Map.Entry<String, Set<String>> entry : groupMembers.entrySet()) {
+                if (entry.getValue().remove(clientId)) {
+                    GroupInfo info = groups.get(entry.getKey());
+                    if (info != null) info.removeMember(clientId);
+                    groupChanged = true;
+                    if (entry.getValue().isEmpty()) {
+                        groups.remove(entry.getKey());
+                        groupMembers.remove(entry.getKey());
+                    }
+                }
+            }
+            if (groupChanged) {
+                broadcastGroupList();
+            }
         }
     }
 
@@ -69,10 +95,119 @@ public class ConnectionManager {
         broadcastMessage(msg, null);
     }
 
-    // Định tuyến gói tin tới một Client cụ thể hoặc broadcast cho tất cả
+    // ==========================================
+    // QUẢN LÝ NHÓM MULTICAST TẦNG ỨNG DỤNG (ALM)
+    // ==========================================
+
+    public GroupInfo createGroup(String groupName, String creatorId) {
+        String groupId = "grp_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        String name = (groupName != null && !groupName.trim().isEmpty()) ? groupName.trim() : "Nhóm-" + groupId.substring(4);
+        GroupInfo info = new GroupInfo(groupId, name, creatorId);
+        groups.put(groupId, info);
+
+        Set<String> members = ConcurrentHashMap.newKeySet();
+        if (creatorId != null && !creatorId.isEmpty()) {
+            members.add(creatorId);
+        }
+        groupMembers.put(groupId, members);
+
+        LOGGER.info("[GROUP_CREATED] Group created: " + info);
+        broadcastGroupList();
+        return info;
+    }
+
+    public boolean joinGroup(String groupId, String clientId) {
+        if (groupId == null || clientId == null) return false;
+        Set<String> members = groupMembers.get(groupId);
+        GroupInfo info = groups.get(groupId);
+        if (members == null || info == null) return false;
+
+        members.add(clientId);
+        info.addMember(clientId);
+        LOGGER.info("[GROUP_JOINED] Client " + clientId + " joined " + groupId);
+        broadcastGroupList();
+        return true;
+    }
+
+    public void leaveGroup(String groupId, String clientId) {
+        if (groupId == null || clientId == null) return;
+        Set<String> members = groupMembers.get(groupId);
+        GroupInfo info = groups.get(groupId);
+        if (members != null) {
+            members.remove(clientId);
+            if (info != null) {
+                info.removeMember(clientId);
+            }
+            LOGGER.info("[GROUP_LEFT] Client " + clientId + " left " + groupId);
+            if (members.isEmpty()) {
+                groups.remove(groupId);
+                groupMembers.remove(groupId);
+                LOGGER.info("[GROUP_REMOVED] Group " + groupId + " was removed (empty members)");
+            }
+            broadcastGroupList();
+        }
+    }
+
+    public boolean isGroup(String targetId) {
+        return targetId != null && groups.containsKey(targetId);
+    }
+
+    public GroupInfo getGroup(String groupId) {
+        return groups.get(groupId);
+    }
+
+    public List<GroupInfo> getAllGroups() {
+        return new ArrayList<>(groups.values());
+    }
+
+    public void broadcastGroupList() {
+        List<GroupInfo> list = getAllGroups();
+        String json = GroupInfo.listToJson(list);
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_LIST_UPDATE, json);
+        broadcastMessage(msg, null);
+    }
+
+    public void sendGroupListTo(ConnectedClient client) {
+        if (client != null) {
+            List<GroupInfo> list = getAllGroups();
+            String json = GroupInfo.listToJson(list);
+            ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_LIST_UPDATE, json);
+            try {
+                client.sendMessage(msg);
+            } catch (IOException ignored) {}
+        }
+    }
+
+    // Phát gói tin đa hướng (Multicast) tới tất cả thành viên trong nhóm qua các kết nối TCP Unicast
+    public void multicastToGroup(String groupId, ProtocolMessage msg, String excludeClientId) {
+        Set<String> members = groupMembers.get(groupId);
+        if (members == null) return;
+
+        for (String memberId : members) {
+            if (excludeClientId != null && excludeClientId.equals(memberId)) {
+                continue;
+            }
+            ConnectedClient recipient = clients.get(memberId);
+            if (recipient != null) {
+                try {
+                    recipient.sendMessage(msg);
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Multicast error to member " + memberId + ": " + e.getMessage());
+                    removeClient(memberId);
+                }
+            }
+        }
+    }
+
+    // Định tuyến gói tin: Toàn phòng (ALL), Nhóm Multicast, hoặc Client Unicast 1-1
     public boolean routeMessage(String targetId, ProtocolMessage msg, String senderId) {
         if (ProtocolConstants.TARGET_ALL.equalsIgnoreCase(targetId)) {
             broadcastMessage(msg, senderId);
+            return true;
+        }
+
+        if (isGroup(targetId)) {
+            multicastToGroup(targetId, msg, senderId);
             return true;
         }
 
@@ -113,5 +248,7 @@ public class ConnectionManager {
             client.close();
         }
         clients.clear();
+        groups.clear();
+        groupMembers.clear();
     }
 }

@@ -3,6 +3,7 @@ package com.peerchat;
 import com.peerchat.client.controller.FileTransferController;
 import com.peerchat.server.Server;
 import com.peerchat.shared.model.FileInfo;
+import com.peerchat.shared.model.GroupInfo;
 import com.peerchat.shared.model.Message;
 import com.peerchat.shared.protocol.MessageType;
 import com.peerchat.shared.protocol.ProtocolConstants;
@@ -79,12 +80,41 @@ public class EndToEndIntegrationTest {
             proto.writeTo(out);
         }
 
+        void createGroup(String groupName) throws Exception {
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.CREATE_GROUP, groupName);
+            proto.writeTo(out);
+        }
+
+        void joinGroup(String groupId) throws Exception {
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.JOIN_GROUP, groupId);
+            proto.writeTo(out);
+        }
+
+        void leaveGroup(String groupId) throws Exception {
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.LEAVE_GROUP, groupId);
+            proto.writeTo(out);
+        }
+
         ProtocolMessage pollMessage(MessageType expectedType, long timeoutSeconds) throws InterruptedException {
             long deadline = System.currentTimeMillis() + (timeoutSeconds * 1000);
             while (System.currentTimeMillis() < deadline) {
                 ProtocolMessage m = incomingQueue.poll(500, TimeUnit.MILLISECONDS);
                 if (m != null && m.getType() == expectedType) {
                     return m;
+                }
+            }
+            return null;
+        }
+
+        ProtocolMessage pollGroupUpdate(String expectedGroupName, long timeoutSeconds) throws InterruptedException {
+            long deadline = System.currentTimeMillis() + (timeoutSeconds * 1000);
+            while (System.currentTimeMillis() < deadline) {
+                ProtocolMessage m = incomingQueue.poll(500, TimeUnit.MILLISECONDS);
+                if (m != null && m.getType() == MessageType.GROUP_LIST_UPDATE) {
+                    List<GroupInfo> groups = GroupInfo.listFromJson(m.getPayloadAsText());
+                    if (expectedGroupName == null || groups.stream().anyMatch(g -> expectedGroupName.equals(g.getGroupName()))) {
+                        return m;
+                    }
                 }
             }
             return null;
@@ -402,6 +432,131 @@ public class EndToEndIntegrationTest {
 
         } finally {
             alice.disconnect();
+        }
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("Kiem thu tao nhom Multicast va phat danh sach nhom GROUP_LIST_UPDATE cho tat ca Client")
+    void testCreateGroupAndBroadcastGroupList() throws Exception {
+        TestClient alice = new TestClient("Alice");
+        TestClient bob = new TestClient("Bob");
+
+        try {
+            alice.connect(serverPort, roomCode);
+            bob.connect(serverPort, roomCode);
+
+            // Alice tạo nhóm "Nhom-Tac-Chien"
+            alice.createGroup("Nhom-Tac-Chien");
+
+            // Cả Alice và Bob đều phải nhận được gói tin GROUP_LIST_UPDATE chứa Nhom-Tac-Chien
+            ProtocolMessage aliceGroupMsg = alice.pollGroupUpdate("Nhom-Tac-Chien", 5);
+            assertNotNull(aliceGroupMsg, "Alice phai nhan duoc GROUP_LIST_UPDATE sau khi tao nhom");
+            List<GroupInfo> aliceGroups = GroupInfo.listFromJson(aliceGroupMsg.getPayloadAsText());
+            assertTrue(aliceGroups.stream().anyMatch(g -> "Nhom-Tac-Chien".equals(g.getGroupName())),
+                    "Danh sach nhom phai co Nhom-Tac-Chien");
+
+            ProtocolMessage bobGroupMsg = bob.pollGroupUpdate("Nhom-Tac-Chien", 5);
+            assertNotNull(bobGroupMsg, "Bob phai nhan duoc GROUP_LIST_UPDATE khi Alice tao nhom");
+            List<GroupInfo> bobGroups = GroupInfo.listFromJson(bobGroupMsg.getPayloadAsText());
+            assertTrue(bobGroups.stream().anyMatch(g -> "Nhom-Tac-Chien".equals(g.getGroupName())),
+                    "Bob phai thay nhom do Alice tao ra");
+
+        } finally {
+            alice.disconnect();
+            bob.disconnect();
+        }
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("Kiem thu tham gia nhom va truyen phat da huong Multicast chi toi thanh vien trong nhom")
+    void testJoinGroupAndMulticastDissemination() throws Exception {
+        TestClient alice = new TestClient("Alice");
+        TestClient bob = new TestClient("Bob");
+        TestClient charlie = new TestClient("Charlie");
+
+        try {
+            alice.connect(serverPort, roomCode);
+            bob.connect(serverPort, roomCode);
+            charlie.connect(serverPort, roomCode);
+
+            // Alice tạo nhóm
+            alice.createGroup("Nhom-Bi-Mat");
+            ProtocolMessage groupMsg = bob.pollGroupUpdate("Nhom-Bi-Mat", 5);
+            assertNotNull(groupMsg);
+            List<GroupInfo> groups = GroupInfo.listFromJson(groupMsg.getPayloadAsText());
+            GroupInfo secretGroup = groups.stream()
+                    .filter(g -> "Nhom-Bi-Mat".equals(g.getGroupName()))
+                    .findFirst()
+                    .orElseThrow();
+
+            // Bob tham gia nhóm
+            bob.joinGroup(secretGroup.getGroupId());
+
+            // Alice nhận thông báo cập nhật thành viên nhóm
+            ProtocolMessage updateMsg = alice.pollGroupUpdate(null, 5);
+            assertNotNull(updateMsg);
+
+            // Alice gửi tin nhắn tới nhóm Multicast (targetId = groupId)
+            alice.sendMessage("Chi co nguoi trong nhom moi nhan duoc!", secretGroup.getGroupId());
+
+            // Bob (thành viên nhóm) PHẢI nhận được tin nhắn
+            ProtocolMessage bobChatMsg = bob.pollMessage(MessageType.CHAT_BROADCAST, 5);
+            assertNotNull(bobChatMsg, "Bob la thanh vien nhom nen phai nhan duoc tin multicast");
+            Message receivedMsg = Message.fromJson(bobChatMsg.getPayloadAsText());
+            assertEquals("Chi co nguoi trong nhom moi nhan duoc!", receivedMsg.getContent());
+            assertEquals(secretGroup.getGroupId(), receivedMsg.getTargetId());
+
+            // Charlie (KHÔNG tham gia nhóm) TUYỆT ĐỐI KHÔNG nhận được tin nhắn này
+            ProtocolMessage charlieChatMsg = charlie.pollMessage(MessageType.CHAT_BROADCAST, 2);
+            assertNull(charlieChatMsg, "Charlie khong o trong nhom thi khong duoc nhan tin multicast");
+
+        } finally {
+            alice.disconnect();
+            bob.disconnect();
+            charlie.disconnect();
+        }
+    }
+
+    @Test
+    @Order(10)
+    @DisplayName("Kiem thu roi nhom Multicast thi khong con nhan duoc tin truyen phat cua nhom nua")
+    void testLeaveGroupAndMulticastExclusion() throws Exception {
+        TestClient alice = new TestClient("Alice");
+        TestClient bob = new TestClient("Bob");
+
+        try {
+            alice.connect(serverPort, roomCode);
+            bob.connect(serverPort, roomCode);
+
+            alice.createGroup("Nhom-Tam-Thoi");
+            ProtocolMessage gMsg = bob.pollGroupUpdate("Nhom-Tam-Thoi", 5);
+            assertNotNull(gMsg);
+            List<GroupInfo> groups = GroupInfo.listFromJson(gMsg.getPayloadAsText());
+            GroupInfo tempGroup = groups.stream()
+                    .filter(g -> "Nhom-Tam-Thoi".equals(g.getGroupName()))
+                    .findFirst()
+                    .orElseThrow();
+
+            // Bob vào nhóm
+            bob.joinGroup(tempGroup.getGroupId());
+            Thread.sleep(300);
+
+            // Bob rời nhóm
+            bob.leaveGroup(tempGroup.getGroupId());
+            Thread.sleep(300);
+
+            // Alice gửi tin nhắn vào nhóm
+            alice.sendMessage("Bob da roi nhom chua?", tempGroup.getGroupId());
+
+            // Bob không được nhận tin nhắn nữa
+            ProtocolMessage bobMsg = bob.pollMessage(MessageType.CHAT_BROADCAST, 2);
+            assertNull(bobMsg, "Bob da roi nhom thi khong duoc nhan tin multicast cua nhom nua");
+
+        } finally {
+            alice.disconnect();
+            bob.disconnect();
         }
     }
 }

@@ -8,6 +8,7 @@ import com.peerchat.shared.model.Message;
 import com.peerchat.shared.protocol.MessageType;
 import com.peerchat.shared.protocol.ProtocolConstants;
 import com.peerchat.shared.protocol.ProtocolMessage;
+import com.peerchat.shared.model.GroupInfo;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -21,6 +22,7 @@ public class ChatService {
 
     // Danh sách quan sát được dùng để cập nhật giao diện JavaFX tự động
     private final ObservableList<ClientInfo> onlinePeers = FXCollections.observableArrayList();
+    private final ObservableList<GroupInfo> availableGroups = FXCollections.observableArrayList();
     private final ObservableList<Message> messageHistory = FXCollections.observableArrayList();
     private final ObservableList<FileInfo> sharedFiles = FXCollections.observableArrayList();
 
@@ -31,6 +33,7 @@ public class ChatService {
     }
 
     public ObservableList<ClientInfo> getOnlinePeers() { return onlinePeers; }
+    public ObservableList<GroupInfo> getAvailableGroups() { return availableGroups; }
     public ObservableList<Message> getMessageHistory() { return messageHistory; }
     public ObservableList<FileInfo> getSharedFiles() { return sharedFiles; }
     public String getClientId() { return clientId; }
@@ -86,6 +89,37 @@ public class ChatService {
                 if (m.isFileMessage() && m.getFileInfo() != null) {
                     sharedFiles.add(m.getFileInfo());
                 }
+            }
+        });
+    }
+
+    // ==========================================
+    // CÁC HÀM GIAO TIẾP NHÓM MULTICAST
+    // ==========================================
+
+    public void sendCreateGroup(String groupName) {
+        if (groupName == null || groupName.trim().isEmpty()) return;
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.CREATE_GROUP, groupName.trim());
+        sender.sendAsync(msg);
+    }
+
+    public void sendJoinGroup(String groupId) {
+        if (groupId == null || groupId.trim().isEmpty()) return;
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.JOIN_GROUP, groupId.trim());
+        sender.sendAsync(msg);
+    }
+
+    public void sendLeaveGroup(String groupId) {
+        if (groupId == null || groupId.trim().isEmpty()) return;
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.LEAVE_GROUP, groupId.trim());
+        sender.sendAsync(msg);
+    }
+
+    public void updateGroupList(List<GroupInfo> groups) {
+        ClientUtils.runOnFxThread(() -> {
+            availableGroups.clear();
+            if (groups != null) {
+                availableGroups.addAll(groups);
             }
         });
     }

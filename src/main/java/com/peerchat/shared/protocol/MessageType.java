@@ -29,5 +29,12 @@ public enum MessageType {
     // Kiểm tra kết nối và lỗi
     PING,
     PONG,
-    ERROR
+    ERROR,
+
+    // Quản lý nhóm phát đa hướng (Application-Layer Multicast)
+    JOIN_GROUP,
+    LEAVE_GROUP,
+    CREATE_GROUP,
+    GROUP_LIST_UPDATE
 }
+
