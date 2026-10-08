@@ -115,6 +115,20 @@ public class ChatService {
         sender.sendAsync(msg);
     }
 
+    public void sendAddUserToGroup(String groupId, String targetClientId) {
+        if (groupId == null || targetClientId == null) return;
+        String json = "{\"groupId\":\"" + groupId + "\",\"targetClientId\":\"" + targetClientId + "\"}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_ADD_USER, json);
+        sender.sendAsync(msg);
+    }
+
+    public void sendKickUserFromGroup(String groupId, String targetClientId) {
+        if (groupId == null || targetClientId == null) return;
+        String json = "{\"groupId\":\"" + groupId + "\",\"targetClientId\":\"" + targetClientId + "\"}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_KICK_USER, json);
+        sender.sendAsync(msg);
+    }
+
     public void updateGroupList(List<GroupInfo> groups) {
         ClientUtils.runOnFxThread(() -> {
             availableGroups.clear();

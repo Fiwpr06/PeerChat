@@ -35,6 +35,8 @@ public enum MessageType {
     JOIN_GROUP,
     LEAVE_GROUP,
     CREATE_GROUP,
-    GROUP_LIST_UPDATE
+    GROUP_LIST_UPDATE,
+    GROUP_ADD_USER,
+    GROUP_KICK_USER
 }
 

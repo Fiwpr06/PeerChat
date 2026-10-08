@@ -176,6 +176,22 @@ public class ClientHandler implements Runnable {
                 String groupId = msg.getPayloadAsText().trim();
                 connectionManager.leaveGroup(groupId, clientId);
             }
+            case GROUP_ADD_USER -> {
+                String payload = msg.getPayloadAsText();
+                String groupId = extractParam(payload, "groupId");
+                String targetId = extractParam(payload, "targetClientId");
+                if (groupId != null && targetId != null) {
+                    connectionManager.addUserToGroup(groupId, targetId, clientId);
+                }
+            }
+            case GROUP_KICK_USER -> {
+                String payload = msg.getPayloadAsText();
+                String groupId = extractParam(payload, "groupId");
+                String targetId = extractParam(payload, "targetClientId");
+                if (groupId != null && targetId != null) {
+                    connectionManager.kickUserFromGroup(groupId, targetId, clientId);
+                }
+            }
             case PING -> {
                 try {
                     new ProtocolMessage(MessageType.PONG, new byte[0]).writeTo(out);

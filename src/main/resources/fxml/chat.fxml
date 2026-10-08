@@ -43,9 +43,9 @@
 
     <!-- Khu vực làm việc chính 3 cột -->
     <center>
-        <SplitPane fx:id="mainSplitPane" dividerPositions="0.16, 0.80">
+        <SplitPane fx:id="mainSplitPane" dividerPositions="0.20, 0.80">
             <!-- Cột trái: Danh sách Client online và Nhóm Multicast -->
-            <VBox styleClass="terminal-panel" spacing="8" minWidth="130.0" prefWidth="165.0">
+            <VBox styleClass="terminal-panel" spacing="8" minWidth="175.0" prefWidth="220.0">
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>

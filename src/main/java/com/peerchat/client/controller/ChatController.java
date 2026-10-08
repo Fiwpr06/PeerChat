@@ -205,7 +205,7 @@ public class ChatController {
         if (groupsListView == null) return;
         groupsListView.setItems(chatService.getAvailableGroups());
 
-        // Định dạng hiển thị từng nhóm Multicast
+        // Định dạng hiển thị từng nhóm Multicast (Chỉ hiển thị các nhóm kín mà người dùng tham gia)
         groupsListView.setCellFactory(param -> new ListCell<>() {
             @Override
             protected void updateItem(GroupInfo item, boolean empty) {
@@ -213,6 +213,7 @@ public class ChatController {
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
+                    setContextMenu(null);
                 } else {
                     HBox cellBox = new HBox(6);
                     cellBox.setAlignment(Pos.CENTER_LEFT);
@@ -229,21 +230,46 @@ public class ChatController {
                     Region spacer = new Region();
                     HBox.setHgrow(spacer, Priority.ALWAYS);
 
-                    boolean isMember = item.hasMember(chatService.getClientId());
-                    Button actionBtn = new Button(isMember ? "RỜI" : "VÀO");
-                    actionBtn.getStyleClass().add(isMember ? "button-danger" : "button");
-                    actionBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 6;");
-                    actionBtn.setOnAction(e -> {
-                        e.consume();
-                        if (isMember) {
-                            chatService.sendLeaveGroup(item.getGroupId());
-                        } else {
-                            chatService.sendJoinGroup(item.getGroupId());
-                        }
-                    });
+                    boolean isCreator = chatService.getClientId().equals(item.getCreatorId());
 
-                    cellBox.getChildren().addAll(icon, nameLabel, countLabel, spacer, actionBtn);
+                    HBox actionsBox = new HBox(3);
+                    actionsBox.setAlignment(Pos.CENTER_RIGHT);
+
+                    if (isCreator) {
+                        Button manageBtn = new Button("⚙");
+                        manageBtn.setTooltip(new Tooltip("Quản trị nhóm (Thêm / Kích thành viên)"));
+                        manageBtn.getStyleClass().add("button");
+                        manageBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 5;");
+                        manageBtn.setOnAction(e -> {
+                            e.consume();
+                            openGroupManagementDialog(item);
+                        });
+                        actionsBox.getChildren().add(manageBtn);
+                    }
+
+                    Button leaveBtn = new Button("RỜI");
+                    leaveBtn.getStyleClass().add("button-danger");
+                    leaveBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 5;");
+                    leaveBtn.setOnAction(e -> {
+                        e.consume();
+                        chatService.sendLeaveGroup(item.getGroupId());
+                    });
+                    actionsBox.getChildren().add(leaveBtn);
+
+                    cellBox.getChildren().addAll(icon, nameLabel, countLabel, spacer, actionsBox);
                     setGraphic(cellBox);
+
+                    // Menu ngữ cảnh chuột phải
+                    ContextMenu cm = new ContextMenu();
+                    if (isCreator) {
+                        MenuItem manageItem = new MenuItem("⚙ Quản lý nhóm (Thêm / Kích)");
+                        manageItem.setOnAction(ev -> openGroupManagementDialog(item));
+                        cm.getItems().add(manageItem);
+                    }
+                    MenuItem leaveItem = new MenuItem("🚪 Rời nhóm");
+                    leaveItem.setOnAction(ev -> chatService.sendLeaveGroup(item.getGroupId()));
+                    cm.getItems().add(leaveItem);
+                    setContextMenu(cm);
                 }
             }
         });
@@ -258,6 +284,151 @@ public class ChatController {
                 reloadMessagesForActiveChannel();
             }
         });
+    }
+
+    // Mở hộp thoại Quản lý nhóm (Chỉ Admin / Người tạo nhóm mới có quyền)
+    private void openGroupManagementDialog(GroupInfo targetGroup) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("PeerChat - Quản trị nhóm");
+        dialog.setHeaderText("QUẢN TRỊ NHÓM MULTICAST: #" + targetGroup.getGroupName());
+
+        try {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        } catch (Exception ignored) {}
+
+        ButtonType closeButton = new ButtonType("ĐÓNG", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().add(closeButton);
+
+        VBox contentBox = new VBox(10);
+        contentBox.setPrefWidth(420);
+        contentBox.setPrefHeight(360);
+
+        Label membersHeader = new Label("[ THÀNH VIÊN TRONG NHÓM ]");
+        membersHeader.getStyleClass().add("panel-header");
+
+        ListView<String> membersListView = new ListView<>();
+        membersListView.setPrefHeight(140);
+
+        Label nonMembersHeader = new Label("[ THÊM NGƯỜI DÙNG ĐANG TRỰC TUYẾN ]");
+        nonMembersHeader.getStyleClass().add("panel-header");
+
+        ListView<ClientInfo> nonMembersListView = new ListView<>();
+        nonMembersListView.setPrefHeight(140);
+
+        Runnable refreshLists = () -> {
+            GroupInfo currentGroup = null;
+            for (GroupInfo g : chatService.getAvailableGroups()) {
+                if (g.getGroupId().equals(targetGroup.getGroupId())) {
+                    currentGroup = g;
+                    break;
+                }
+            }
+            if (currentGroup == null) {
+                dialog.close();
+                return;
+            }
+
+            final GroupInfo finalGroup = currentGroup;
+            membersListView.getItems().setAll(finalGroup.getMemberIds());
+
+            ObservableList<ClientInfo> nonMembers = FXCollections.observableArrayList();
+            for (ClientInfo peer : chatService.getOnlinePeers()) {
+                if (!finalGroup.hasMember(peer.getClientId())) {
+                    nonMembers.add(peer);
+                }
+            }
+            nonMembersListView.getItems().setAll(nonMembers);
+        };
+
+        membersListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String memberId, boolean empty) {
+                super.updateItem(memberId, empty);
+                if (empty || memberId == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+
+                    String name = memberId;
+                    if (memberId.equals(chatService.getClientId())) {
+                        name = chatService.getDisplayName() + " (Bạn)";
+                    } else {
+                        for (ClientInfo p : chatService.getOnlinePeers()) {
+                            if (p.getClientId().equals(memberId)) {
+                                name = p.getDisplayName() + " [" + p.getCoordinates() + "]";
+                                break;
+                            }
+                        }
+                    }
+
+                    boolean isCreator = memberId.equals(targetGroup.getCreatorId());
+                    Label nameLbl = new Label(name + (isCreator ? " [ADMIN]" : ""));
+                    nameLbl.setStyle(isCreator ? "-fx-font-weight: bold; -fx-text-fill: #1f4f6e;" : "-fx-font-weight: bold;");
+
+                    Region sp = new Region();
+                    HBox.setHgrow(sp, Priority.ALWAYS);
+
+                    box.getChildren().addAll(nameLbl, sp);
+
+                    if (!isCreator) {
+                        Button kickBtn = new Button("KÍCH");
+                        kickBtn.getStyleClass().add("button-danger");
+                        kickBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 8;");
+                        kickBtn.setOnAction(e -> chatService.sendKickUserFromGroup(targetGroup.getGroupId(), memberId));
+                        box.getChildren().add(kickBtn);
+                    }
+
+                    setGraphic(box);
+                }
+            }
+        });
+
+        nonMembersListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(ClientInfo peer, boolean empty) {
+                super.updateItem(peer, empty);
+                if (empty || peer == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+
+                    Label nameLbl = new Label(peer.getDisplayName() + " [" + peer.getCoordinates() + "]");
+                    nameLbl.setStyle("-fx-font-weight: bold;");
+
+                    Region sp = new Region();
+                    HBox.setHgrow(sp, Priority.ALWAYS);
+
+                    Button addBtn = new Button("+ THÊM");
+                    addBtn.getStyleClass().add("button-action");
+                    addBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 8;");
+                    addBtn.setOnAction(e -> chatService.sendAddUserToGroup(targetGroup.getGroupId(), peer.getClientId()));
+
+                    box.getChildren().addAll(nameLbl, sp, addBtn);
+                    setGraphic(box);
+                }
+            }
+        });
+
+        ListChangeListener<GroupInfo> groupChangeListener = c -> ClientUtils.runOnFxThread(refreshLists);
+        chatService.getAvailableGroups().addListener(groupChangeListener);
+
+        ListChangeListener<ClientInfo> peersChangeListener = c -> ClientUtils.runOnFxThread(refreshLists);
+        chatService.getOnlinePeers().addListener(peersChangeListener);
+
+        dialog.setOnHidden(e -> {
+            chatService.getAvailableGroups().removeListener(groupChangeListener);
+            chatService.getOnlinePeers().removeListener(peersChangeListener);
+        });
+
+        refreshLists.run();
+
+        contentBox.getChildren().addAll(membersHeader, membersListView, nonMembersHeader, nonMembersListView);
+        dialog.getDialogPane().setContent(contentBox);
+        dialog.showAndWait();
     }
 
     // Mở hộp thoại tạo nhóm Multicast mới
@@ -738,14 +909,22 @@ public class ChatController {
                         List<GroupInfo> groups = GroupInfo.listFromJson(message.getPayloadAsText());
                         chatService.updateGroupList(groups);
                         if (activeSelectedGroup != null) {
+                            boolean stillMember = false;
                             for (GroupInfo g : groups) {
                                 if (g.getGroupId().equals(activeSelectedGroup.getGroupId())) {
                                     activeSelectedGroup = g;
+                                    stillMember = true;
                                     ClientUtils.runOnFxThread(() ->
                                         channelTargetLabel.setText("NHÓM: #" + g.getGroupName() + " (" + g.getMemberCount() + " thành viên)")
                                     );
                                     break;
                                 }
+                            }
+                            if (!stillMember) {
+                                ClientUtils.runOnFxThread(() -> {
+                                    activeSelectedGroup = null;
+                                    peersListView.getSelectionModel().select(0);
+                                });
                             }
                         }
                     }

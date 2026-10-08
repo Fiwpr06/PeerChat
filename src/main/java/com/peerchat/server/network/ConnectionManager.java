@@ -65,6 +65,9 @@ public class ConnectionManager {
                     if (entry.getValue().isEmpty()) {
                         groups.remove(entry.getKey());
                         groupMembers.remove(entry.getKey());
+                    } else if (info != null && clientId.equals(info.getCreatorId())) {
+                        String nextAdmin = entry.getValue().iterator().next();
+                        info.setCreatorId(nextAdmin);
                     }
                 }
             }
@@ -143,9 +146,61 @@ public class ConnectionManager {
                 groups.remove(groupId);
                 groupMembers.remove(groupId);
                 LOGGER.info("[GROUP_REMOVED] Group " + groupId + " was removed (empty members)");
+            } else if (info != null && clientId.equals(info.getCreatorId())) {
+                String nextAdmin = members.iterator().next();
+                info.setCreatorId(nextAdmin);
+                LOGGER.info("[GROUP_ADMIN_TRANSFERRED] Admin of " + groupId + " transferred to " + nextAdmin);
             }
             broadcastGroupList();
         }
+    }
+
+    public boolean addUserToGroup(String groupId, String targetClientId, String requesterId) {
+        if (groupId == null || targetClientId == null || requesterId == null) return false;
+        GroupInfo info = groups.get(groupId);
+        Set<String> members = groupMembers.get(groupId);
+        if (info == null || members == null) return false;
+
+        // Chỉ Admin (người tạo nhóm) mới có quyền thêm thành viên
+        if (!requesterId.equals(info.getCreatorId())) {
+            LOGGER.warning("[GROUP_ADD_DENIED] Client " + requesterId + " is not creator of " + groupId);
+            return false;
+        }
+
+        if (!clients.containsKey(targetClientId)) {
+            LOGGER.warning("[GROUP_ADD_FAIL] Target " + targetClientId + " is not connected");
+            return false;
+        }
+
+        members.add(targetClientId);
+        info.addMember(targetClientId);
+        LOGGER.info("[GROUP_USER_ADDED] Client " + targetClientId + " added to " + groupId + " by " + requesterId);
+        broadcastGroupList();
+        return true;
+    }
+
+    public boolean kickUserFromGroup(String groupId, String targetClientId, String requesterId) {
+        if (groupId == null || targetClientId == null || requesterId == null) return false;
+        GroupInfo info = groups.get(groupId);
+        Set<String> members = groupMembers.get(groupId);
+        if (info == null || members == null) return false;
+
+        // Chỉ Admin (người tạo nhóm) mới có quyền kích thành viên
+        if (!requesterId.equals(info.getCreatorId())) {
+            LOGGER.warning("[GROUP_KICK_DENIED] Client " + requesterId + " is not creator of " + groupId);
+            return false;
+        }
+
+        if (targetClientId.equals(info.getCreatorId())) {
+            LOGGER.warning("[GROUP_KICK_DENIED] Creator cannot kick themselves: " + targetClientId);
+            return false;
+        }
+
+        members.remove(targetClientId);
+        info.removeMember(targetClientId);
+        LOGGER.info("[GROUP_USER_KICKED] Client " + targetClientId + " kicked from " + groupId + " by " + requesterId);
+        broadcastGroupList();
+        return true;
     }
 
     public boolean isGroup(String targetId) {
@@ -160,16 +215,28 @@ public class ConnectionManager {
         return new ArrayList<>(groups.values());
     }
 
+    // Lấy danh sách các nhóm mà client đang là thành viên (Nhóm kín)
+    public List<GroupInfo> getGroupsForClient(String clientId) {
+        List<GroupInfo> list = new ArrayList<>();
+        if (clientId == null) return list;
+        for (GroupInfo g : groups.values()) {
+            if (g.hasMember(clientId)) {
+                list.add(g);
+            }
+        }
+        return list;
+    }
+
+    // Gửi danh sách nhóm phù hợp tới từng client riêng lẻ (chỉ gửi nhóm client thuộc về)
     public void broadcastGroupList() {
-        List<GroupInfo> list = getAllGroups();
-        String json = GroupInfo.listToJson(list);
-        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_LIST_UPDATE, json);
-        broadcastMessage(msg, null);
+        for (ConnectedClient client : clients.values()) {
+            sendGroupListTo(client);
+        }
     }
 
     public void sendGroupListTo(ConnectedClient client) {
         if (client != null) {
-            List<GroupInfo> list = getAllGroups();
+            List<GroupInfo> list = getGroupsForClient(client.getClientId());
             String json = GroupInfo.listToJson(list);
             ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_LIST_UPDATE, json);
             try {
