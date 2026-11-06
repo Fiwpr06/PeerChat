@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
@@ -18,39 +18,39 @@
             prefWidth="1080.0" prefHeight="720.0"
             stylesheets="@../css/style.css">
 
-    <!-- Thanh tiêu đề phía trên -->
+    <!-- Thanh tiÃªu Ä‘á» phÃ­a trÃªn -->
     <top>
         <HBox styleClass="hud-bar" spacing="16" alignment="CENTER_LEFT">
             <padding>
                 <Insets top="8" right="16" bottom="8" left="16"/>
             </padding>
-            <Label text="PEERCHAT - HỆ THỐNG GIAO TIẾP VÀ TRUYỀN TỆP" styleClass="hud-title"/>
+            <Label text="PEERCHAT - Há»† THá»NG GIAO TIáº¾P VÃ€ TRUYá»€N Tá»†P" styleClass="hud-title"/>
             <Region HBox.hgrow="ALWAYS"/>
 
-            <Label text="Bí danh:" styleClass="telemetry-label"/>
-            <Label fx:id="nodeCallsignLabel" text="NGƯỜI DÙNG" styleClass="telemetry-value-cyan"/>
+            <Label text="BÃ­ danh:" styleClass="telemetry-label"/>
+            <Label fx:id="nodeCallsignLabel" text="NGÆ¯á»œI DÃ™NG" styleClass="telemetry-value-cyan"/>
 
-            <Label text="Máy chủ:" styleClass="telemetry-label"/>
+            <Label text="MÃ¡y chá»§:" styleClass="telemetry-label"/>
             <Label fx:id="serverCoordinatesLabel" text="127.0.0.1:5000" styleClass="telemetry-value-nominal"/>
 
-            <Label text="Trạng thái:" styleClass="telemetry-label"/>
-            <Label fx:id="carrierStatusLabel" text="ĐÃ KẾT NỐI" styleClass="telemetry-value-nominal"/>
+            <Label text="Tráº¡ng thÃ¡i:" styleClass="telemetry-label"/>
+            <Label fx:id="carrierStatusLabel" text="ÄÃƒ Káº¾T Ná»I" styleClass="telemetry-value-nominal"/>
 
-            <Button fx:id="toggleRepoButton" text="📁 KHO TÀI LIỆU" onAction="#handleToggleRepo" styleClass="button"/>
-            <Button text="NGẮT KẾT NỐI" onAction="#handleDisconnect" styleClass="button-danger"/>
+            <Button fx:id="toggleRepoButton" text="ðŸ“ KHO TÃ€I LIá»†U" onAction="#handleToggleRepo" styleClass="button"/>
+            <Button text="NGáº®T Káº¾T Ná»I" onAction="#handleDisconnect" styleClass="button-danger"/>
         </HBox>
     </top>
 
-    <!-- Khu vực làm việc chính 3 cột -->
+    <!-- Khu vá»±c lÃ m viá»‡c chÃ­nh 3 cá»™t -->
     <center>
         <SplitPane fx:id="mainSplitPane" dividerPositions="0.20, 0.80">
-            <!-- Cột trái: Danh sách Client online và Nhóm Multicast -->
+            <!-- Cá»™t trÃ¡i: Danh sÃ¡ch Client online vÃ  NhÃ³m Multicast -->
             <VBox styleClass="terminal-panel" spacing="8" minWidth="175.0" prefWidth="220.0">
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="[ TRỰC TUYẾN ]" styleClass="panel-header"/>
+                    <Label text="[ TRá»°C TUYáº¾N ]" styleClass="panel-header"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="peerCountLabel" text="0" styleClass="telemetry-value-nominal"/>
                 </HBox>
@@ -58,42 +58,42 @@
                 <ListView fx:id="peersListView" VBox.vgrow="ALWAYS" prefHeight="220.0"/>
 
                 <HBox alignment="CENTER_LEFT" style="-fx-padding: 6 0 2 0;">
-                    <Label text="[ NHÓM MULTICAST ]" styleClass="panel-header"/>
+                    <Label text="[ NHÃ“M MULTICAST ]" styleClass="panel-header"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Button fx:id="createGroupButton" text="+ TẠO" onAction="#handleCreateGroup"
+                    <Button fx:id="createGroupButton" text="+ Táº O" onAction="#handleCreateGroup"
                             styleClass="button" style="-fx-font-size: 10px; -fx-padding: 2 6;"/>
                 </HBox>
 
                 <ListView fx:id="groupsListView" VBox.vgrow="ALWAYS" prefHeight="180.0"/>
             </VBox>
 
-            <!-- Cột giữa: Luồng tin nhắn chat và ô nhập -->
+            <!-- Cá»™t giá»¯a: Luá»“ng tin nháº¯n chat vÃ  Ã´ nháº­p -->
             <VBox spacing="8" minWidth="350.0">
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
 
-                <!-- Người nhận hiện tại -->
+                <!-- NgÆ°á»i nháº­n hiá»‡n táº¡i -->
                 <HBox alignment="CENTER_LEFT" styleClass="hud-bar">
                     <padding>
                         <Insets top="6" right="10" bottom="6" left="10"/>
                     </padding>
-                    <Label text="Kênh trò chuyện:" styleClass="telemetry-label"/>
+                    <Label text="KÃªnh trÃ² chuyá»‡n:" styleClass="telemetry-label"/>
                     <Region prefWidth="10"/>
-                    <Label fx:id="channelTargetLabel" text="KÊNH CHUNG" styleClass="telemetry-value-cyan"/>
+                    <Label fx:id="channelTargetLabel" text="KÃŠNH CHUNG" styleClass="telemetry-value-cyan"/>
                 </HBox>
 
-                <!-- Banner thông báo khi mất kết nối -->
+                <!-- Banner thÃ´ng bÃ¡o khi máº¥t káº¿t ná»‘i -->
                 <HBox fx:id="disconnectBanner" visible="false" managed="false" alignment="CENTER_LEFT" spacing="12" styleClass="disconnect-warning-banner">
                     <padding>
                         <Insets top="6" right="12" bottom="6" left="12"/>
                     </padding>
-                    <Label text="⚠ [ MẤT LIÊN LẠC ] MÁY CHỦ ĐÃ NGẮT KẾT NỐI" styleClass="disconnect-banner-text"/>
+                    <Label text="âš  [ Máº¤T LIÃŠN Láº C ] MÃY CHá»¦ ÄÃƒ NGáº®T Káº¾T Ná»I" styleClass="disconnect-banner-text"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Button text="🚪 VỀ MÀN HÌNH ĐĂNG NHẬP" onAction="#handleReturnToConnect" styleClass="button"/>
+                    <Button text="ðŸšª Vá»€ MÃ€N HÃŒNH ÄÄ‚NG NHáº¬P" onAction="#handleReturnToConnect" styleClass="button"/>
                 </HBox>
 
-                <!-- Danh sách tin nhắn cuộn (Hỗ trợ kéo thả tập tin trực tiếp) -->
+                <!-- Danh sÃ¡ch tin nháº¯n cuá»™n (Há»— trá»£ kÃ©o tháº£ táº­p tin trá»±c tiáº¿p) -->
                 <ScrollPane fx:id="chatScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="NEVER">
                     <VBox fx:id="messagesContainer" spacing="8">
                         <padding>
@@ -102,32 +102,38 @@
                     </VBox>
                 </ScrollPane>
 
-                <!-- Ô nhập tin nhắn, nút đính kèm tập tin và nút gửi -->
-                <HBox spacing="8" alignment="BOTTOM_CENTER">
-                    <Button fx:id="attachFileButton" text="📎 GỬI TỆP" onAction="#handleAttachFile"
-                            styleClass="button" prefHeight="55.0" prefWidth="125.0" minWidth="120.0"/>
-                    <TextArea fx:id="messageInputField" promptText="Soạn tin nhắn... [Enter: Gửi | Shift+Enter: Xuống dòng | Kéo thả tệp]"
+                <!-- Ã” nháº­p tin nháº¯n, nÃºt Ä‘Ã­nh kÃ¨m táº­p tin, emoji, ghi Ã¢m vÃ  nÃºt gá»­i -->
+                <HBox spacing="6" alignment="BOTTOM_CENTER">
+                    <Button fx:id="attachFileButton" text="ðŸ“Ž Tá»†P" onAction="#handleAttachFile"
+                            styleClass="button" prefHeight="55.0" prefWidth="75.0" minWidth="70.0"/>
+                    <Button fx:id="emojiButton" text="ðŸ˜Š" onAction="#handleToggleEmoji"
+                            styleClass="button" prefHeight="55.0" prefWidth="48.0" minWidth="45.0"
+                            style="-fx-font-size: 16px;"/>
+                    <Button fx:id="recordAudioButton" text="ðŸŽ™ THOáº I" onAction="#handleToggleRecordAudio"
+                            styleClass="button" prefHeight="55.0" prefWidth="85.0" minWidth="80.0"/>
+                    <TextArea fx:id="messageInputField" promptText="Soáº¡n tin nháº¯n... [Enter: Gá»­i | Shift+Enter: Xuá»‘ng dÃ²ng | KÃ©o tháº£ tá»‡p]"
                               HBox.hgrow="ALWAYS" prefRowCount="2" maxHeight="70" wrapText="true"/>
-                    <Button fx:id="sendButton" text="GỬI" onAction="#handleSendMessage"
-                            styleClass="button-action" prefWidth="85.0" prefHeight="55.0"/>
+                    <Button fx:id="sendButton" text="Gá»¬I" onAction="#handleSendMessage"
+                            styleClass="button-action" prefWidth="80.0" prefHeight="55.0"/>
                 </HBox>
             </VBox>
 
-            <!-- Cột phải: Module truyền file qua server -->
+            <!-- Cá»™t pháº£i: Module truyá»n file qua server -->
             <fx:include fx:id="fileTransfer" source="file-transfer.fxml"/>
         </SplitPane>
     </center>
 
-    <!-- Thanh trạng thái dưới cùng -->
+    <!-- Thanh tráº¡ng thÃ¡i dÆ°á»›i cÃ¹ng -->
     <bottom>
         <HBox styleClass="hud-status-bar" spacing="20" alignment="CENTER_LEFT">
             <padding>
                 <Insets top="6" right="16" bottom="6" left="16"/>
             </padding>
-            <Label text="LIÊN LẠC: BÌNH THƯỜNG" styleClass="telemetry-value-nominal"/>
-            <Label text="Toàn vẹn dữ liệu: Mã băm SHA-256" styleClass="telemetry-label"/>
+            <Label text="LIÃŠN Láº C: BÃŒNH THÆ¯á»œNG" styleClass="telemetry-value-nominal"/>
+            <Label text="ToÃ n váº¹n dá»¯ liá»‡u: MÃ£ bÄƒm SHA-256" styleClass="telemetry-label"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="systemClockLabel" text="00:00:00" styleClass="telemetry-label"/>
         </HBox>
     </bottom>
 </BorderPane>
+

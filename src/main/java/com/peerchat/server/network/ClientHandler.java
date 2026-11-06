@@ -115,8 +115,11 @@ public class ClientHandler implements Runnable {
 
         ConnectedClient connectedClient = new ConnectedClient(clientId, displayName, socket, out);
 
-        // Gửi xác nhận thành công trước để Client chuyển màn hình
+        // Gửi xác nhận thành công trước tiên theo đúng giao thức bắt tay
         sendResponse(true, "CARRIER_ACQUIRED", clientId);
+
+        // Đăng ký client vào danh sách ngay lập tức để đồng bộ danh bạ
+        connectionManager.addClient(connectedClient);
 
         // Gửi lịch sử tin nhắn phòng gần nhất cho client vừa vào phòng (Late Joiner Sync)
         java.util.List<Message> history = chatService.getRecentHistory();
@@ -124,9 +127,6 @@ public class ClientHandler implements Runnable {
             ProtocolMessage histMsg = ProtocolMessage.createText(MessageType.CHAT_HISTORY, Message.listToJson(history));
             histMsg.writeTo(out);
         }
-
-        // Đăng ký client vào danh sách và thông báo cho mọi người
-        connectionManager.addClient(connectedClient);
 
         LOGGER.info("[AUTH_OK] Authentication successful: " + displayName + " [" + clientId + "]");
         return true;

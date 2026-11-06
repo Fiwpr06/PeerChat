@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
@@ -14,20 +14,20 @@
             prefWidth="720.0" prefHeight="540.0"
             stylesheets="@../css/style.css">
 
-    <!-- Thanh tiêu đề phía trên -->
+    <!-- Thanh tiÃªu Ä‘á» phÃ­a trÃªn -->
     <top>
         <HBox styleClass="hud-bar" spacing="12" alignment="CENTER_LEFT">
             <padding>
                 <Insets top="10" right="16" bottom="10" left="16"/>
             </padding>
-            <Label text="PEERCHAT - HỆ THỐNG GIAO TIẾP VÀ TRUYỀN TỆP" styleClass="hud-title"/>
+            <Label text="PEERCHAT - Há»† THá»NG GIAO TIáº¾P VÃ€ TRUYá»€N Tá»†P" styleClass="hud-title"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label text="GIAO THỨC:" styleClass="telemetry-label"/>
+            <Label text="GIAO THá»¨C:" styleClass="telemetry-label"/>
             <Label text="TCP SOCKET" styleClass="telemetry-value-nominal"/>
         </HBox>
     </top>
 
-    <!-- Khung nhập thông tin kết nối -->
+    <!-- Khung nháº­p thÃ´ng tin káº¿t ná»‘i -->
     <center>
         <VBox alignment="CENTER" spacing="18" fillWidth="false">
             <VBox styleClass="terminal-panel" prefWidth="480.0" spacing="14">
@@ -35,58 +35,59 @@
                     <Insets top="20" right="24" bottom="20" left="24"/>
                 </padding>
 
-                <!-- Tiêu đề form -->
-                <Label text="[ XÁC THỰC KẾT NỐI MÁY CHỦ ]" styleClass="panel-header"/>
-                <Label text="Nhập địa chỉ IP, cổng và mã phòng do máy chủ cung cấp để kết nối." styleClass="telemetry-label"/>
+                <!-- TiÃªu Ä‘á» form -->
+                <Label text="[ XÃC THá»°C Káº¾T Ná»I MÃY CHá»¦ ]" styleClass="panel-header"/>
+                <Label text="Nháº­p Ä‘á»‹a chá»‰ IP, cá»•ng vÃ  mÃ£ phÃ²ng do mÃ¡y chá»§ cung cáº¥p Ä‘á»ƒ káº¿t ná»‘i." styleClass="telemetry-label"/>
 
-                <!-- Địa chỉ IP / Host -->
+                <!-- Äá»‹a chá»‰ IP / Host -->
                 <VBox spacing="4">
-                    <Label text="Địa chỉ IP máy chủ (Cục bộ / Mạng LAN):" styleClass="telemetry-label"/>
-                    <TextField fx:id="hostField" promptText="127.0.0.1 (hoặc IP mạng LAN)" text="127.0.0.1"/>
+                    <Label text="Äá»‹a chá»‰ IP mÃ¡y chá»§ (Cá»¥c bá»™ / Máº¡ng LAN):" styleClass="telemetry-label"/>
+                    <TextField fx:id="hostField" promptText="127.0.0.1 (hoáº·c IP máº¡ng LAN)" text="127.0.0.1"/>
                 </VBox>
 
-                <!-- Cổng Port -->
+                <!-- Cá»•ng Port -->
                 <VBox spacing="4">
-                    <Label text="Cổng kết nối (Mặc định: 5000):" styleClass="telemetry-label"/>
+                    <Label text="Cá»•ng káº¿t ná»‘i (Máº·c Ä‘á»‹nh: 5000):" styleClass="telemetry-label"/>
                     <TextField fx:id="portField" promptText="5000" text="5000"/>
                 </VBox>
 
-                <!-- Mã kết nối Connection Code -->
+                <!-- MÃ£ káº¿t ná»‘i Connection Code -->
                 <VBox spacing="4">
-                    <Label text="Mã kết nối phòng (5 ký tự):" styleClass="telemetry-label"/>
-                    <TextField fx:id="codeField" promptText="Nhập mã kết nối 5 ký tự (ví dụ: KMH67)..."/>
+                    <Label text="MÃ£ káº¿t ná»‘i phÃ²ng (5 kÃ½ tá»±):" styleClass="telemetry-label"/>
+                    <TextField fx:id="codeField" promptText="Nháº­p mÃ£ káº¿t ná»‘i 5 kÃ½ tá»± (vÃ­ dá»¥: KMH67)..."/>
                 </VBox>
 
-                <!-- Tên hiển thị -->
+                <!-- TÃªn hiá»ƒn thá»‹ -->
                 <VBox spacing="4">
-                    <Label text="Tên hiển thị (Bí danh):" styleClass="telemetry-label"/>
-                    <TextField fx:id="nameField" promptText="Nhập bí danh của bạn (ví dụ: An, Bình, Minh)..."/>
+                    <Label text="TÃªn hiá»ƒn thá»‹ (BÃ­ danh):" styleClass="telemetry-label"/>
+                    <TextField fx:id="nameField" promptText="Nháº­p bÃ­ danh cá»§a báº¡n (vÃ­ dá»¥: An, BÃ¬nh, Minh)..."/>
                 </VBox>
 
-                <!-- Trạng thái kết nối -->
-                <Label fx:id="statusLabel" text="[ TRẠNG THÁI ] CHỜ THIẾT LẬP KẾT NỐI..." styleClass="telemetry-value-cyan" wrapText="true"/>
+                <!-- Tráº¡ng thÃ¡i káº¿t ná»‘i -->
+                <Label fx:id="statusLabel" text="[ TRáº NG THÃI ] CHá»œ THIáº¾T Láº¬P Káº¾T Ná»I..." styleClass="telemetry-value-cyan" wrapText="true"/>
 
-                <!-- Nút kết nối -->
+                <!-- NÃºt káº¿t ná»‘i -->
                 <HBox spacing="10" alignment="CENTER_RIGHT">
                     <padding>
                         <Insets top="6"/>
                     </padding>
-                    <Button fx:id="connectButton" text="KẾT NỐI MÁY CHỦ" onAction="#handleConnect"
+                    <Button fx:id="connectButton" text="Káº¾T Ná»I MÃY CHá»¦" onAction="#handleConnect"
                             styleClass="button-action" defaultButton="true" prefWidth="200.0"/>
                 </HBox>
             </VBox>
         </VBox>
     </center>
 
-    <!-- Thanh trạng thái phía dưới -->
+    <!-- Thanh tráº¡ng thÃ¡i phÃ­a dÆ°á»›i -->
     <bottom>
         <HBox styleClass="hud-status-bar" spacing="16">
             <padding>
                 <Insets top="6" right="16" bottom="6" left="16"/>
             </padding>
-            <Label text="Mô hình: Máy khách - Máy chủ TCP" styleClass="telemetry-label"/>
+            <Label text="MÃ´ hÃ¬nh: MÃ¡y khÃ¡ch - MÃ¡y chá»§ TCP" styleClass="telemetry-label"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label text="Trạng thái: Sẵn sàng | Giao thức: TCP/IP" styleClass="telemetry-label"/>
+            <Label text="Tráº¡ng thÃ¡i: Sáºµn sÃ ng | Giao thá»©c: TCP/IP" styleClass="telemetry-label"/>
         </HBox>
     </bottom>
 </BorderPane>
+

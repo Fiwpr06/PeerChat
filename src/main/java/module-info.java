@@ -4,6 +4,7 @@ module com.peerchat {
     requires javafx.graphics;
     requires java.logging;
     requires java.desktop;
+    requires java.sql;
 
     opens com.peerchat.client to javafx.graphics, javafx.fxml;
     opens com.peerchat.client.controller to javafx.fxml;
@@ -20,4 +21,5 @@ module com.peerchat {
     exports com.peerchat.shared.util;
     exports com.peerchat.server;
     exports com.peerchat.server.controller;
+    exports com.peerchat.server.db;
 }

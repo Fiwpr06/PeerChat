@@ -1,6 +1,7 @@
 package com.peerchat.server.controller;
 
 import com.peerchat.server.Server;
+import com.peerchat.server.db.DataStoreManager;
 import com.peerchat.server.network.ConnectionManager;
 import com.peerchat.shared.model.ClientInfo;
 import javafx.animation.Animation;
@@ -31,6 +32,7 @@ public class ServerController {
     public record ClientRow(String name, String address, String time, String clientId) {}
 
     @FXML private Label statusPillLabel;
+    @FXML private Label dbStatusLabel;
     @FXML private Button serverToggleBtn;
     @FXML private TextField portField;
     @FXML private Label ipDisplayLabel;
@@ -67,6 +69,7 @@ public class ServerController {
         String lanIp = Server.getLocalLanAddress();
         ipDisplayLabel.setText("127.0.0.1 | LAN: " + lanIp);
 
+        updateDbStatus();
         setupLogCapture();
         startClock();
 
@@ -74,6 +77,18 @@ public class ServerController {
 
         // Tự động khởi động Server ngay khi mở giao diện
         handleToggleServer();
+    }
+
+    private void updateDbStatus() {
+        if (dbStatusLabel == null) return;
+        boolean isMySql = DataStoreManager.getInstance().isMySqlActive();
+        if (isMySql) {
+            dbStatusLabel.setText("MYSQL: KẾT NỐI");
+            dbStatusLabel.setStyle("-fx-text-fill: #3e7238; -fx-font-weight: bold;");
+        } else {
+            dbStatusLabel.setText("CSDL: BỘ ĐỆM RAM");
+            dbStatusLabel.setStyle("-fx-text-fill: #b8522e; -fx-font-weight: bold;");
+        }
     }
 
     // Bật/tắt trạng thái hoạt động của Server

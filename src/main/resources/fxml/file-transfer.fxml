@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
@@ -18,32 +18,33 @@
         <Insets top="10" right="10" bottom="10" left="10"/>
     </padding>
 
-    <!-- Tiêu đề Kho tài liệu và nút đóng -->
+    <!-- TiÃªu Ä‘á» Kho tÃ i liá»‡u vÃ  nÃºt Ä‘Ã³ng -->
     <HBox alignment="CENTER_LEFT" spacing="6">
-        <Label text="[ KHO TÀI LIỆU PHÒNG ]" styleClass="panel-header"/>
+        <Label text="[ KHO TÃ€I LIá»†U PHÃ’NG ]" styleClass="panel-header"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Label fx:id="fileCountBadge" text="0 TỆP" styleClass="telemetry-value-cyan"/>
-        <Button text="✕" onAction="#handleClosePanel" styleClass="button" prefWidth="26.0" prefHeight="22.0"/>
+        <Label fx:id="fileCountBadge" text="0 Tá»†P" styleClass="telemetry-value-cyan"/>
+        <Button text="âœ•" onAction="#handleClosePanel" styleClass="button" prefWidth="26.0" prefHeight="22.0"/>
     </HBox>
 
-    <Label text="KÉO THẢ TẬP TIN VÀO CHAT ĐỂ TẢI LÊN" styleClass="telemetry-label"/>
+    <Label text="KÃ‰O THáº¢ Táº¬P TIN VÃ€O CHAT Äá»‚ Táº¢I LÃŠN" styleClass="telemetry-label"/>
 
-    <!-- Danh sách file đã chia sẻ -->
+    <!-- Danh sÃ¡ch file Ä‘Ã£ chia sáº» -->
     <ListView fx:id="sharedFilesListView" VBox.vgrow="ALWAYS"/>
 
-    <!-- Khối giám sát tiến độ tải / gửi file -->
+    <!-- Khá»‘i giÃ¡m sÃ¡t tiáº¿n Ä‘á»™ táº£i / gá»­i file -->
     <VBox spacing="4" styleClass="hud-status-bar">
         <padding>
             <Insets top="6" right="8" bottom="6" left="8"/>
         </padding>
         <HBox alignment="CENTER_LEFT">
-            <Label text="TIẾN ĐỘ TRUYỀN TẢI:" styleClass="telemetry-label"/>
+            <Label text="TIáº¾N Äá»˜ TRUYá»€N Táº¢I:" styleClass="telemetry-label"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="speedLabel" text="0.0 KB/s" styleClass="telemetry-value-nominal"/>
         </HBox>
         <ProgressBar fx:id="transferProgressBar" progress="0.0" maxWidth="Infinity"/>
-        <Label fx:id="statusLabel" text="SẴN SÀNG" styleClass="telemetry-label" wrapText="true"/>
-        <Label fx:id="checksumLabel" text="Mã SHA-256: [Chờ truyền]" styleClass="telemetry-value-nominal" wrapText="true"/>
+        <Label fx:id="statusLabel" text="Sáº´N SÃ€NG" styleClass="telemetry-label" wrapText="true"/>
+        <Label fx:id="checksumLabel" text="MÃ£ SHA-256: [Chá» truyá»n]" styleClass="telemetry-value-nominal" wrapText="true"/>
     </VBox>
 </VBox>
+
 

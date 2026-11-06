@@ -1,50 +1,45 @@
 package com.peerchat.server.service;
 
+import com.peerchat.server.db.DataStoreManager;
 import com.peerchat.server.network.ConnectionManager;
 import com.peerchat.shared.model.Message;
 import com.peerchat.shared.protocol.MessageType;
 import com.peerchat.shared.protocol.ProtocolMessage;
 
+import java.util.List;
 import java.util.logging.Logger;
 
-// Dịch vụ định tuyến và lưu bộ đệm tin nhắn chat phía Server
+// Dịch vụ định tuyến và lưu trữ tin nhắn chat phía Server (kết hợp MySQL ngầm)
 public class ChatService {
     private static final Logger LOGGER = Logger.getLogger(ChatService.class.getName());
     private static final int MAX_HISTORY = 100;
 
     private final ConnectionManager connectionManager;
-    private final java.util.List<Message> messageHistory = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final DataStoreManager dataStoreManager;
 
     public ChatService(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
+        this.dataStoreManager = DataStoreManager.getInstance();
     }
 
-    // Xử lý, lưu vào lịch sử và chuyển tiếp tin nhắn tới người nhận hoặc toàn phòng
+    // Xử lý, chuyển tiếp tin nhắn tức thì và lưu vào CSDL ngầm
     public void processAndRoute(Message message) {
         if (message == null || message.getContent() == null) return;
 
-        // Lưu vào bộ đệm lịch sử (chỉ lưu tin nhắn chung ALL vào lịch sử phòng)
-        if (!message.isDirect()) {
-            addToHistory(message);
-        }
-
         LOGGER.info("[CHAT] " + message.getSenderName() + " -> " + message.getTargetId() + ": " + message.getContent());
 
-        // Đóng gói tin nhắn dưới dạng CHAT_BROADCAST
+        // 1. Chuyển tiếp tin nhắn qua TCP Socket NGAY LẬP TỨC (ưu tiên độ trễ thời gian thực)
         ProtocolMessage outMsg = ProtocolMessage.createText(MessageType.CHAT_BROADCAST, message.toJson());
         connectionManager.routeMessage(message.getTargetId(), outMsg, message.isFileMessage() ? null : message.getSenderId());
+
+        // 2. Đẩy tác vụ lưu CSDL vào hàng đợi bất đồng bộ (chạy ngầm không chặn Socket)
+        dataStoreManager.getAsyncDbWorker().submit(() -> {
+            dataStoreManager.getStore().saveMessage(message);
+        });
     }
 
-    // Thêm một tin nhắn vào bộ đệm lịch sử
-    public void addToHistory(Message message) {
-        if (messageHistory.size() >= MAX_HISTORY) {
-            messageHistory.remove(0);
-        }
-        messageHistory.add(message);
-    }
-
-    // Lấy danh sách tin nhắn lịch sử gần nhất
-    public java.util.List<Message> getRecentHistory() {
-        return new java.util.ArrayList<>(messageHistory);
+    // Lấy danh sách tin nhắn lịch sử gần nhất cho Late Joiner Sync từ CSDL
+    public List<Message> getRecentHistory() {
+        return dataStoreManager.getStore().getRecentMessages(MAX_HISTORY);
     }
 }

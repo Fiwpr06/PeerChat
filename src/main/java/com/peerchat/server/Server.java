@@ -118,6 +118,7 @@ public class Server {
         running = false;
         System.out.println("\n[SERVER] Stopping PeerChat Server...");
         connectionManager.closeAll();
+        com.peerchat.server.db.DataStoreManager.getInstance().close();
 
         try {
             if (serverSocket != null && !serverSocket.isClosed()) {

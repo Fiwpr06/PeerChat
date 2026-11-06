@@ -46,6 +46,11 @@ public final class ClientUtils {
         });
     }
 
+    // Hiển thị hộp thoại báo lỗi nhanh
+    public static void showError(String title, String header, String content) {
+        showAlert(Alert.AlertType.ERROR, title, header, content);
+    }
+
     // Hiển thị hộp thoại xác nhận (dùng khi hỏi ý kiến nhận file)
     public static Optional<ButtonType> showConfirmation(String title, String header, String content) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);

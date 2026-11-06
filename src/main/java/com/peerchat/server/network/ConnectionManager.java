@@ -1,5 +1,6 @@
 package com.peerchat.server.network;
 
+import com.peerchat.server.db.DataStoreManager;
 import com.peerchat.server.model.ConnectedClient;
 import com.peerchat.shared.model.ClientInfo;
 import com.peerchat.shared.protocol.MessageType;
@@ -31,6 +32,23 @@ public class ConnectionManager {
         void onClientRemoved(String clientId);
     }
     private final List<ClientListener> clientListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public ConnectionManager() {
+        try {
+            List<GroupInfo> storedGroups = DataStoreManager.getInstance().getStore().getAllGroups();
+            for (GroupInfo g : storedGroups) {
+                groups.put(g.getGroupId(), g);
+                Set<String> members = ConcurrentHashMap.newKeySet();
+                members.addAll(g.getMemberIds());
+                groupMembers.put(g.getGroupId(), members);
+            }
+            if (!storedGroups.isEmpty()) {
+                LOGGER.info("[GROUP_RESTORE] Đã khôi phục " + storedGroups.size() + " nhóm từ CSDL.");
+            }
+        } catch (Exception e) {
+            LOGGER.warning("[GROUP_RESTORE_FAIL] " + e.getMessage());
+        }
+    }
 
     public void addClientListener(ClientListener l) { clientListeners.add(l); }
     public void removeClientListener(ClientListener l) { clientListeners.remove(l); }
@@ -115,6 +133,9 @@ public class ConnectionManager {
         groupMembers.put(groupId, members);
 
         LOGGER.info("[GROUP_CREATED] Group created: " + info);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().saveGroup(info);
+        });
         broadcastGroupList();
         return info;
     }
@@ -146,10 +167,18 @@ public class ConnectionManager {
                 groups.remove(groupId);
                 groupMembers.remove(groupId);
                 LOGGER.info("[GROUP_REMOVED] Group " + groupId + " was removed (empty members)");
-            } else if (info != null && clientId.equals(info.getCreatorId())) {
-                String nextAdmin = members.iterator().next();
-                info.setCreatorId(nextAdmin);
-                LOGGER.info("[GROUP_ADMIN_TRANSFERRED] Admin of " + groupId + " transferred to " + nextAdmin);
+                DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+                    DataStoreManager.getInstance().getStore().deleteGroup(groupId);
+                });
+            } else {
+                if (info != null && clientId.equals(info.getCreatorId())) {
+                    String nextAdmin = members.iterator().next();
+                    info.setCreatorId(nextAdmin);
+                    LOGGER.info("[GROUP_ADMIN_TRANSFERRED] Admin of " + groupId + " transferred to " + nextAdmin);
+                }
+                DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+                    DataStoreManager.getInstance().getStore().removeGroupMember(groupId, clientId);
+                });
             }
             broadcastGroupList();
         }
@@ -175,6 +204,9 @@ public class ConnectionManager {
         members.add(targetClientId);
         info.addMember(targetClientId);
         LOGGER.info("[GROUP_USER_ADDED] Client " + targetClientId + " added to " + groupId + " by " + requesterId);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().addGroupMember(groupId, targetClientId);
+        });
         broadcastGroupList();
         return true;
     }
@@ -199,6 +231,9 @@ public class ConnectionManager {
         members.remove(targetClientId);
         info.removeMember(targetClientId);
         LOGGER.info("[GROUP_USER_KICKED] Client " + targetClientId + " kicked from " + groupId + " by " + requesterId);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().removeGroupMember(groupId, targetClientId);
+        });
         broadcastGroupList();
         return true;
     }

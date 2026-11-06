@@ -1,5 +1,6 @@
 package com.peerchat.server.service;
 
+import com.peerchat.server.db.DataStoreManager;
 import com.peerchat.server.network.ConnectionManager;
 import com.peerchat.shared.model.FileInfo;
 import com.peerchat.shared.protocol.MessageType;
@@ -25,6 +26,7 @@ public class FileTransferService {
 
     private final ConnectionManager connectionManager;
     private final ChatService chatService;
+    private final DataStoreManager dataStoreManager = DataStoreManager.getInstance();
     private final ExecutorService downloadPool = Executors.newCachedThreadPool();
 
     // Quản lý phiên upload đang diễn ra
@@ -120,6 +122,10 @@ public class FileTransferService {
             if (isMatch) {
                 LOGGER.info("[UPLOAD_VERIFIED] SHA-256 MATCH for " + info.getFileName() + " (" + serverHash.substring(0, 8) + "...)");
                 storedFiles.put(info.getFileId(), info);
+                final File savedFile = session.targetFile;
+                dataStoreManager.getAsyncDbWorker().submit(() -> {
+                    dataStoreManager.getStore().saveFile(info, savedFile.getAbsolutePath());
+                });
 
                 // Tạo tin nhắn đính kèm file và gửi vào luồng chat phòng
                 Message fileMsg = new Message(info.getSenderId(), info.getSenderName(), info.getTargetId(), info);
@@ -153,6 +159,12 @@ public class FileTransferService {
         downloadPool.submit(() -> {
             try {
                 FileInfo info = storedFiles.get(fileId);
+                if (info == null) {
+                    info = dataStoreManager.getStore().getFile(fileId);
+                    if (info != null) {
+                        storedFiles.put(fileId, info);
+                    }
+                }
                 File targetFile = null;
 
                 if (info != null) {
@@ -217,6 +229,13 @@ public class FileTransferService {
     }
 
     public FileInfo getStoredFileInfo(String fileId) {
-        return storedFiles.get(fileId);
+        FileInfo info = storedFiles.get(fileId);
+        if (info == null && fileId != null) {
+            info = dataStoreManager.getStore().getFile(fileId);
+            if (info != null) {
+                storedFiles.put(fileId, info);
+            }
+        }
+        return info;
     }
 }

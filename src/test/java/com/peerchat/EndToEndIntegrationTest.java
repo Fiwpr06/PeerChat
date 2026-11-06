@@ -261,6 +261,8 @@ public class EndToEndIntegrationTest {
             bob.connect(serverPort, roomCode);
             charlie.connect(serverPort, roomCode);
 
+            Thread.sleep(80);
+
             alice.sendMessage("Tin nhan bi mat chi danh cho Bob", bob.clientId);
 
             ProtocolMessage bobMsg = bob.pollMessage(MessageType.CHAT_BROADCAST, 5);
@@ -510,6 +512,8 @@ public class EndToEndIntegrationTest {
             bob.connect(serverPort, roomCode);
             charlie.connect(serverPort, roomCode);
 
+            Thread.sleep(80);
+
             // Alice tạo nhóm kín
             alice.createGroup("Nhom-Bi-Mat");
             ProtocolMessage aliceGroupMsg = alice.pollGroupUpdate("Nhom-Bi-Mat", 5);
@@ -628,5 +632,82 @@ public class EndToEndIntegrationTest {
             bob.disconnect();
             charlie.disconnect();
         }
+    }
+
+    @Test
+    @Order(10)
+    @DisplayName("Kiem thu truyen va giai ma Emoji 4-bytes (Unicode UTF-8)")
+    void test10_EmojiTransmissionAndEncoding() throws Exception {
+        TestClient sender = new TestClient("EmojiSender");
+        TestClient receiver = new TestClient("EmojiReceiver");
+
+        try {
+            sender.connect(serverPort, roomCode);
+            receiver.connect(serverPort, roomCode);
+
+            // Cho ca 2 nhan danh sach online
+            sender.pollMessage(MessageType.CLIENT_LIST_UPDATE, 5);
+            receiver.pollMessage(MessageType.CLIENT_LIST_UPDATE, 5);
+
+            // Gui chuoi tin nhan chua day du Emoji pho bien 4-bytes
+            String emojiText = "Xin chào các bạn! 😀 😂 ❤️ 👍 🎉 🔥 🚀 💯";
+            sender.sendMessage(emojiText, ProtocolConstants.TARGET_ALL);
+
+            ProtocolMessage broadcast = receiver.pollMessage(MessageType.CHAT_BROADCAST, 5);
+            assertNotNull(broadcast, "Receiver phai nhan duoc goi tin CHAT_BROADCAST");
+
+            Message receivedMsg = Message.fromJson(broadcast.getPayloadAsText());
+            assertEquals(emojiText, receivedMsg.getContent(), "Noi dung Emoji phai nguyen ven 100% khong loi ky tu");
+
+        } finally {
+            sender.disconnect();
+            receiver.disconnect();
+        }
+    }
+
+    @Test
+    @Order(11)
+    @DisplayName("Kiem thu Database DataStoreManager hoat dong on dinh (MySQL hoac In-Memory Graceful Fallback)")
+    void test11_DatabaseStoreManagerAndFallback() {
+        com.peerchat.server.db.DataStoreManager manager = com.peerchat.server.db.DataStoreManager.getInstance();
+        assertNotNull(manager, "DataStoreManager khong duoc null");
+        assertNotNull(manager.getStore(), "Active DataStore khong duoc null");
+        assertTrue(manager.getStore().isAvailable(), "DataStore phai san sang phuc vu");
+
+        // Kiem tra luu va doc tin nhan
+        Message testMsg = new Message("test_sender", "Tester", ProtocolConstants.TARGET_ALL, "Hello Database Persistent Test");
+        manager.getStore().saveMessage(testMsg);
+
+        List<Message> history = manager.getStore().getRecentMessages(10);
+        assertNotNull(history);
+        assertFalse(history.isEmpty());
+        assertTrue(history.stream().anyMatch(m -> "Hello Database Persistent Test".equals(m.getContent())));
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("Kiem thu nhan dien dinh dang tep tin Media (Audio, Video, Image)")
+    void test12_MediaFileFormatDetection() {
+        // Audio
+        assertTrue(com.peerchat.client.controller.ChatController.isAudioFile("voice_note.wav"));
+        assertTrue(com.peerchat.client.controller.ChatController.isAudioFile("song.mp3"));
+        assertTrue(com.peerchat.client.controller.ChatController.isAudioFile("audio.ogg"));
+        assertFalse(com.peerchat.client.controller.ChatController.isAudioFile("document.pdf"));
+
+        // Video
+        assertTrue(com.peerchat.client.controller.ChatController.isVideoFile("intro.mp4"));
+        assertTrue(com.peerchat.client.controller.ChatController.isVideoFile("clip.avi"));
+        assertTrue(com.peerchat.client.controller.ChatController.isVideoFile("movie.mkv"));
+        assertFalse(com.peerchat.client.controller.ChatController.isVideoFile("picture.png"));
+
+        // Image
+        assertTrue(com.peerchat.client.controller.FileTransferController.isImageFile("avatar.png"));
+        assertTrue(com.peerchat.client.controller.FileTransferController.isImageFile("photo.jpg"));
+
+        // Icons
+        assertEquals("🎵", com.peerchat.client.controller.FileTransferController.getSimpleFileIcon("record.wav"));
+        assertEquals("🎬", com.peerchat.client.controller.FileTransferController.getSimpleFileIcon("demo.mp4"));
+        assertEquals("🖼", com.peerchat.client.controller.FileTransferController.getSimpleFileIcon("image.png"));
+        assertEquals("🗎", com.peerchat.client.controller.FileTransferController.getSimpleFileIcon("archive.zip"));
     }
 }

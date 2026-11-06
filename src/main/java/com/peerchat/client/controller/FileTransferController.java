@@ -163,8 +163,23 @@ public class FileTransferController {
                 || lower.endsWith(".gif") || lower.endsWith(".bmp") || lower.endsWith(".webp");
     }
 
+    public static boolean isAudioFile(String fileName) {
+        if (fileName == null) return false;
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".wav") || lower.endsWith(".mp3") || lower.endsWith(".ogg") || lower.endsWith(".m4a");
+    }
+
+    public static boolean isVideoFile(String fileName) {
+        if (fileName == null) return false;
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".mp4") || lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".mkv") || lower.endsWith(".webm");
+    }
+
     // Biểu tượng đơn giản cho từng loại tập tin
     public static String getSimpleFileIcon(String fileName) {
-        return isImageFile(fileName) ? "🖼" : "🗎";
+        if (isImageFile(fileName)) return "🖼";
+        if (isAudioFile(fileName)) return "🎵";
+        if (isVideoFile(fileName)) return "🎬";
+        return "🗎";
     }
 }

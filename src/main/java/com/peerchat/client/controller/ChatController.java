@@ -80,6 +80,8 @@ public class ChatController {
     @FXML private VBox messagesContainer;
     @FXML private HBox disconnectBanner;
     @FXML private Button attachFileButton;
+    @FXML private Button emojiButton;
+    @FXML private Button recordAudioButton;
     @FXML private TextArea messageInputField;
     @FXML private Button sendButton;
 
@@ -98,6 +100,11 @@ public class ChatController {
     private GroupInfo activeSelectedGroup = null;
     private boolean isRepoOpen = true;
     private Timeline clockTimeline;
+    private final com.peerchat.client.util.AudioRecordService audioRecordService = new com.peerchat.client.util.AudioRecordService();
+    private final com.peerchat.client.util.AudioPlayerService audioPlayerService = new com.peerchat.client.util.AudioPlayerService();
+    private com.peerchat.client.util.EmojiPickerPopup emojiPickerPopup;
+    private Timeline recordTimeline;
+    private int recordDurationSec = 0;
 
     // Khởi tạo dữ liệu và kết nối dịch vụ cho màn hình chat
     public void initData(ClientSocket clientSocket,
@@ -115,6 +122,12 @@ public class ChatController {
         nodeCallsignLabel.setText(chatService.getDisplayName().toUpperCase());
         serverCoordinatesLabel.setText(serverCoordinates);
         carrierStatusLabel.setText("ĐÃ KẾT NỐI");
+
+        this.emojiPickerPopup = new com.peerchat.client.util.EmojiPickerPopup(emoji -> {
+            int caret = messageInputField.getCaretPosition();
+            messageInputField.insertText(caret, emoji);
+            messageInputField.requestFocus();
+        });
 
         if (fileTransferController != null) {
             fileTransferController.initData(fileTransferService, chatService, this::handleToggleRepo);
@@ -540,6 +553,50 @@ public class ChatController {
         }
     }
 
+    // Bật/tắt bảng chọn Emoji cảm xúc
+    @FXML
+    private void handleToggleEmoji() {
+        if (emojiPickerPopup != null) {
+            emojiPickerPopup.show(emojiButton);
+        }
+    }
+
+    // Bật/tắt chế độ ghi âm giọng nói qua Microphone
+    @FXML
+    private void handleToggleRecordAudio() {
+        if (!audioRecordService.isRecording()) {
+            boolean started = audioRecordService.startRecording();
+            if (started) {
+                recordDurationSec = 0;
+                recordAudioButton.setText("■ DỪNG (0s)");
+                recordAudioButton.setStyle("-fx-background-color: #b8522e; -fx-text-fill: #ffffff; -fx-font-weight: bold;");
+                recordTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+                    recordDurationSec++;
+                    recordAudioButton.setText("■ DỪNG (" + recordDurationSec + "s)");
+                }));
+                recordTimeline.setCycleCount(Animation.INDEFINITE);
+                recordTimeline.play();
+            } else {
+                ClientUtils.showError(
+                        "LỖI MICROPHONE",
+                        "Không thể truy cập Microphone",
+                        "Vui lòng kiểm tra thiết bị thu âm trên máy tính."
+                );
+            }
+        } else {
+            if (recordTimeline != null) {
+                recordTimeline.stop();
+            }
+            recordAudioButton.setText("🎙 THOẠI");
+            recordAudioButton.setStyle("");
+
+            File wavFile = audioRecordService.stopRecording();
+            if (wavFile != null && wavFile.exists() && wavFile.length() > 0) {
+                stageAndSendDroppedFile(wavFile);
+            }
+        }
+    }
+
     // Đẩy tập tin kéo thả lên server để chia sẻ vào cuộc trò chuyện đang chọn
     private void stageAndSendDroppedFile(File file) {
         if (file != null && file.exists() && file.isFile()) {
@@ -642,6 +699,10 @@ public class ChatController {
             FileInfo fileInfo = msg.getFileInfo();
             if (FileTransferController.isImageFile(fileInfo.getFileName())) {
                 renderImageCard(card, fileInfo);
+            } else if (isAudioFile(fileInfo.getFileName())) {
+                renderAudioCard(card, fileInfo);
+            } else if (isVideoFile(fileInfo.getFileName())) {
+                renderVideoCard(card, fileInfo);
             } else {
                 renderFileCard(card, fileInfo);
             }
@@ -876,6 +937,240 @@ public class ChatController {
         } catch (Exception ignored) {}
     }
 
+    // Kiểm tra tập tin có phải âm thanh không
+    public static boolean isAudioFile(String fileName) {
+        if (fileName == null) return false;
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".wav") || lower.endsWith(".mp3") || lower.endsWith(".ogg") || lower.endsWith(".m4a");
+    }
+
+    // Kiểm tra tập tin có phải video không
+    public static boolean isVideoFile(String fileName) {
+        if (fileName == null) return false;
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".mp4") || lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".mkv") || lower.endsWith(".webm");
+    }
+
+    // Hiển thị thẻ tin nhắn âm thanh Voice Note
+    private void renderAudioCard(VBox card, FileInfo fileInfo) {
+        VBox audioCard = new VBox(6);
+        audioCard.getStyleClass().add("file-card");
+        audioCard.setStyle("-fx-border-color: #8c8675; -fx-background-color: #dfdbcc; -fx-padding: 8px;");
+
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label iconLabel = new Label("🎙");
+        iconLabel.setStyle("-fx-font-size: 16px;");
+
+        Label titleLabel = new Label("VOICE NOTE // " + fileInfo.getFileName());
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1c1b17; -fx-font-size: 11px;");
+
+        topRow.getChildren().addAll(iconLabel, titleLabel);
+
+        Label metaLabel = new Label("Dung lượng: " + com.peerchat.shared.util.FileUtils.formatFileSize(fileInfo.getFileSize()) +
+                " | Định dạng: WAV Audio");
+        metaLabel.getStyleClass().add("file-card-meta");
+
+        HBox actionsRow = new HBox(8);
+        actionsRow.setAlignment(Pos.CENTER_LEFT);
+
+        Button playBtn = new Button("▶ PHÁT ÂM THANH");
+        playBtn.getStyleClass().add("button-action");
+        playBtn.setStyle("-fx-font-size: 10px; -fx-padding: 4 10;");
+
+        Button downloadBtn = new Button("⬇ TẢI VỀ");
+        downloadBtn.getStyleClass().add("file-card-btn");
+        downloadBtn.setStyle("-fx-font-size: 10px; -fx-padding: 4 10;");
+
+        File cacheFile = new File(CACHE_DIR, fileInfo.getFileId() + "_" + fileInfo.getFileName());
+
+        playBtn.setOnAction(e -> {
+            if (audioPlayerService.isPlaying(cacheFile)) {
+                audioPlayerService.stop();
+                playBtn.setText("▶ PHÁT ÂM THANH");
+                return;
+            }
+
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                playBtn.setText("■ DỪNG");
+                boolean playing = audioPlayerService.play(cacheFile, () -> {
+                    playBtn.setText("▶ PHÁT ÂM THANH");
+                });
+                if (!playing) {
+                    playBtn.setText("LỖI PHÁT");
+                }
+            } else {
+                playBtn.setText("⏳ ĐANG TẢI...");
+                playBtn.setDisable(true);
+                fileTransferService.requestDownload(fileInfo, cacheFile, new FileTransferService.DownloadCallback() {
+                    @Override
+                    public void onProgress(double progress, long currentBytes, long totalBytes) {}
+
+                    @Override
+                    public void onComplete(boolean success, String hash, String error) {
+                        ClientUtils.runOnFxThread(() -> {
+                            playBtn.setDisable(false);
+                            if (success && cacheFile.exists()) {
+                                playBtn.setText("■ DỪNG");
+                                audioPlayerService.play(cacheFile, () -> playBtn.setText("▶ PHÁT ÂM THANH"));
+                            } else {
+                                playBtn.setText("❌ LỖI TẢI");
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        downloadBtn.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("LƯU FILE ÂM THANH");
+            chooser.setInitialFileName(fileInfo.getFileName());
+            File dest = chooser.showSaveDialog(chatScrollPane.getScene().getWindow());
+            if (dest != null) {
+                if (cacheFile.exists()) {
+                    try {
+                        java.nio.file.Files.copy(cacheFile.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        downloadBtn.setText("📂 MỞ THƯ MỤC");
+                        downloadBtn.setOnAction(ev -> openDirectory(dest.getParentFile()));
+                    } catch (Exception ex) {
+                        downloadBtn.setText("LỖI LƯU");
+                    }
+                } else {
+                    fileTransferService.requestDownload(fileInfo, dest, new FileTransferService.DownloadCallback() {
+                        @Override
+                        public void onProgress(double progress, long currentBytes, long totalBytes) {}
+
+                        @Override
+                        public void onComplete(boolean success, String hash, String error) {
+                            ClientUtils.runOnFxThread(() -> {
+                                if (success) {
+                                    downloadBtn.setText("📂 MỞ THƯ MỤC");
+                                    downloadBtn.setOnAction(ev -> openDirectory(dest.getParentFile()));
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        actionsRow.getChildren().addAll(playBtn, downloadBtn);
+        audioCard.getChildren().addAll(topRow, metaLabel, actionsRow);
+        card.getChildren().add(audioCard);
+    }
+
+    // Hiển thị thẻ tập tin Video
+    private void renderVideoCard(VBox card, FileInfo fileInfo) {
+        VBox videoCard = new VBox(6);
+        videoCard.getStyleClass().add("file-card");
+        videoCard.setStyle("-fx-border-color: #8c8675; -fx-background-color: #dfdbcc; -fx-padding: 8px;");
+
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label iconLabel = new Label("🎬");
+        iconLabel.setStyle("-fx-font-size: 16px;");
+
+        Label titleLabel = new Label("VIDEO // " + fileInfo.getFileName());
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1c1b17; -fx-font-size: 11px;");
+
+        topRow.getChildren().addAll(iconLabel, titleLabel);
+
+        Label metaLabel = new Label("Dung lượng: " + com.peerchat.shared.util.FileUtils.formatFileSize(fileInfo.getFileSize()) +
+                " | SHA-256: " + ((fileInfo.getChecksum() != null && fileInfo.getChecksum().length() >= 10) ? fileInfo.getChecksum().substring(0, 10) + "..." : "N/A"));
+        metaLabel.getStyleClass().add("file-card-meta");
+
+        HBox actionsRow = new HBox(8);
+        actionsRow.setAlignment(Pos.CENTER_LEFT);
+
+        Button openVideoBtn = new Button("▶ MỞ XEM VIDEO");
+        openVideoBtn.getStyleClass().add("button-action");
+        openVideoBtn.setStyle("-fx-font-size: 10px; -fx-padding: 4 10;");
+
+        Button downloadBtn = new Button("⬇ TẢI VỀ");
+        downloadBtn.getStyleClass().add("file-card-btn");
+        downloadBtn.setStyle("-fx-font-size: 10px; -fx-padding: 4 10;");
+
+        File cacheFile = new File(CACHE_DIR, fileInfo.getFileId() + "_" + fileInfo.getFileName());
+
+        openVideoBtn.setOnAction(e -> {
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                try {
+                    java.awt.Desktop.getDesktop().open(cacheFile);
+                } catch (Exception ex) {
+                    openVideoBtn.setText("LỖI MỞ");
+                }
+            } else {
+                openVideoBtn.setText("⏳ ĐANG TẢI...");
+                openVideoBtn.setDisable(true);
+                fileTransferService.requestDownload(fileInfo, cacheFile, new FileTransferService.DownloadCallback() {
+                    @Override
+                    public void onProgress(double progress, long currentBytes, long totalBytes) {
+                        ClientUtils.runOnFxThread(() -> {
+                            openVideoBtn.setText(String.format("⏳ TẢI (%.0f%%)", progress * 100.0));
+                        });
+                    }
+
+                    @Override
+                    public void onComplete(boolean success, String hash, String error) {
+                        ClientUtils.runOnFxThread(() -> {
+                            openVideoBtn.setDisable(false);
+                            if (success && cacheFile.exists()) {
+                                openVideoBtn.setText("▶ MỞ XEM VIDEO");
+                                try {
+                                    java.awt.Desktop.getDesktop().open(cacheFile);
+                                } catch (Exception ex) {
+                                    openVideoBtn.setText("LỖI MỞ");
+                                }
+                            } else {
+                                openVideoBtn.setText("❌ LỖI TẢI");
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        downloadBtn.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("LƯU VIDEO");
+            chooser.setInitialFileName(fileInfo.getFileName());
+            File dest = chooser.showSaveDialog(chatScrollPane.getScene().getWindow());
+            if (dest != null) {
+                if (cacheFile.exists()) {
+                    try {
+                        java.nio.file.Files.copy(cacheFile.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        downloadBtn.setText("📂 MỞ THƯ MỤC");
+                        downloadBtn.setOnAction(ev -> openDirectory(dest.getParentFile()));
+                    } catch (Exception ex) {
+                        downloadBtn.setText("LỖI LƯU");
+                    }
+                } else {
+                    fileTransferService.requestDownload(fileInfo, dest, new FileTransferService.DownloadCallback() {
+                        @Override
+                        public void onProgress(double progress, long currentBytes, long totalBytes) {}
+
+                        @Override
+                        public void onComplete(boolean success, String hash, String error) {
+                            ClientUtils.runOnFxThread(() -> {
+                                if (success) {
+                                    downloadBtn.setText("📂 MỞ THƯ MỤC");
+                                    downloadBtn.setOnAction(ev -> openDirectory(dest.getParentFile()));
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        actionsRow.getChildren().addAll(openVideoBtn, downloadBtn);
+        videoCard.getChildren().addAll(topRow, metaLabel, actionsRow);
+        card.getChildren().add(videoCard);
+    }
+
     // Đăng ký nhận các gói tin từ server và phân luồng xử lý
     private void setupNetworkListener() {
         messageReceiver.addListener(new MessageReceiver.MessageListener() {
@@ -992,6 +1287,13 @@ public class ChatController {
 
     // Giải phóng kết nối an toàn
     private void cleanupConnection() {
+        audioPlayerService.stop();
+        if (audioRecordService.isRecording()) {
+            audioRecordService.stopRecording();
+        }
+        if (recordTimeline != null) {
+            recordTimeline.stop();
+        }
         if (messageSender != null) {
             try {
                 messageSender.sendSync(new ProtocolMessage(MessageType.DISCONNECT, new byte[0]));

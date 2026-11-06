@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
@@ -18,85 +18,88 @@
             prefWidth="960.0" prefHeight="650.0"
             stylesheets="@../css/style.css">
 
-    <!-- Thanh tiêu đề phía trên -->
+    <!-- Thanh tiÃªu Ä‘á» phÃ­a trÃªn -->
     <top>
         <HBox styleClass="hud-bar" spacing="16" alignment="CENTER_LEFT">
             <padding>
                 <Insets top="8" right="16" bottom="8" left="16"/>
             </padding>
-            <Label text="PEERCHAT - TRUNG TÂM ĐIỀU HÀNH MÁY CHỦ" styleClass="hud-title"/>
+            <Label text="PEERCHAT - TRUNG TÃ‚M ÄIá»€U HÃ€NH MÃY CHá»¦" styleClass="hud-title"/>
             <Region HBox.hgrow="ALWAYS"/>
 
-            <Label text="Trạng thái:" styleClass="telemetry-label"/>
-            <Label fx:id="statusPillLabel" text="ĐANG DỪNG" styleClass="server-status-pill-stopped"/>
+            <Label text="Tráº¡ng thÃ¡i:" styleClass="telemetry-label"/>
+            <Label fx:id="statusPillLabel" text="ÄANG Dá»ªNG" styleClass="server-status-pill-stopped"/>
 
-            <Button fx:id="serverToggleBtn" text="▶ KHỞI ĐỘNG MÁY CHỦ" onAction="#handleToggleServer"
+            <Label text="CSDL:" styleClass="telemetry-label"/>
+            <Label fx:id="dbStatusLabel" text="MYSQL" styleClass="telemetry-value-nominal"/>
+
+            <Button fx:id="serverToggleBtn" text="â–¶ KHá»žI Äá»˜NG MÃY CHá»¦" onAction="#handleToggleServer"
                     styleClass="button-action" prefWidth="180.0"/>
         </HBox>
     </top>
 
-    <!-- Khu vực điều khiển và giám sát chính -->
+    <!-- Khu vá»±c Ä‘iá»u khiá»ƒn vÃ  giÃ¡m sÃ¡t chÃ­nh -->
     <center>
         <VBox spacing="10">
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
 
-            <!-- Bảng thông số & Khối mã phòng -->
+            <!-- Báº£ng thÃ´ng sá»‘ & Khá»‘i mÃ£ phÃ²ng -->
             <HBox styleClass="terminal-panel" spacing="20" alignment="CENTER_LEFT">
                 <padding>
                     <Insets top="10" right="14" bottom="10" left="14"/>
                 </padding>
 
-                <!-- Cổng kết nối -->
+                <!-- Cá»•ng káº¿t ná»‘i -->
                 <VBox spacing="4">
-                    <Label text="CỔNG KẾT NỐI:" styleClass="telemetry-label"/>
+                    <Label text="Cá»”NG Káº¾T Ná»I:" styleClass="telemetry-label"/>
                     <TextField fx:id="portField" text="5000" promptText="5000" prefWidth="85.0"/>
                 </VBox>
 
-                <!-- Địa chỉ IP -->
+                <!-- Äá»‹a chá»‰ IP -->
                 <VBox spacing="4">
-                    <Label text="ĐỊA CHỈ MÁY CHỦ (CỤC BỘ / MẠNG LAN):" styleClass="telemetry-label"/>
+                    <Label text="Äá»ŠA CHá»ˆ MÃY CHá»¦ (Cá»¤C Bá»˜ / Máº NG LAN):" styleClass="telemetry-label"/>
                     <HBox spacing="8" alignment="CENTER_LEFT">
                         <Label fx:id="ipDisplayLabel" text="127.0.0.1 | LAN: 192.168.1.x" styleClass="telemetry-value-nominal"/>
-                        <Button text="📋 SAO CHÉP IP" onAction="#handleCopyIp" styleClass="button"/>
+                        <Button text="ðŸ“‹ SAO CHÃ‰P IP" onAction="#handleCopyIp" styleClass="button"/>
                     </HBox>
                 </VBox>
 
                 <Region HBox.hgrow="ALWAYS"/>
 
-                <!-- Khối Mã Phòng Nổi Bật Kèm Nút Copy 1 Chạm -->
+                <!-- Khá»‘i MÃ£ PhÃ²ng Ná»•i Báº­t KÃ¨m NÃºt Copy 1 Cháº¡m -->
                 <VBox alignment="CENTER_RIGHT" spacing="4">
-                    <Label text="MÃ KẾT NỐI PHÒNG:" styleClass="telemetry-label"/>
+                    <Label text="MÃƒ Káº¾T Ná»I PHÃ’NG:" styleClass="telemetry-label"/>
                     <HBox spacing="8" alignment="CENTER_RIGHT">
                         <HBox styleClass="server-code-box">
                             <Label fx:id="codeDisplayLabel" text="-----" styleClass="server-code-text"/>
                         </HBox>
-                        <Button fx:id="copyCodeBtn" text="📋 SAO CHÉP MÃ" onAction="#handleCopyCode"
+                        <Button fx:id="copyCodeBtn" text="ðŸ“‹ SAO CHÃ‰P MÃƒ" onAction="#handleCopyCode"
                                 styleClass="button-action" prefHeight="42.0" prefWidth="140.0"/>
                     </HBox>
                     <Label fx:id="copyFeedbackLabel" text="" styleClass="telemetry-value-nominal"/>
                 </VBox>
             </HBox>
 
-            <!-- Khung giám sát 2 cột -->
+            <!-- Khung giÃ¡m sÃ¡t 2 cá»™t -->
             <SplitPane fx:id="monitorSplitPane" dividerPositions="0.45" VBox.vgrow="ALWAYS">
-                <!-- Cột trái: Danh sách Client online -->
+                <!-- Cá»™t trÃ¡i: Danh sÃ¡ch Client online -->
                 <VBox styleClass="terminal-panel" spacing="8">
                     <padding>
                         <Insets top="8" right="8" bottom="8" left="8"/>
                     </padding>
                     <HBox alignment="CENTER_LEFT">
-                        <Label text="[ DANH SÁCH MÁY KHÁCH KẾT NỐI ]" styleClass="panel-header"/>
+                        <Label text="[ DANH SÃCH MÃY KHÃCH Káº¾T Ná»I ]" styleClass="panel-header"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="clientCountLabel" text="0 MÁY" styleClass="telemetry-value-nominal"/>
+                        <Label fx:id="clientCountLabel" text="0 MÃY" styleClass="telemetry-value-nominal"/>
                     </HBox>
 
                     <TableView fx:id="clientsTableView" VBox.vgrow="ALWAYS">
                         <columns>
-                            <TableColumn fx:id="colName" text="BÍ DANH" prefWidth="120.0"/>
-                            <TableColumn fx:id="colAddress" text="ĐỊA CHỈ MẠNG" prefWidth="150.0"/>
-                            <TableColumn fx:id="colTime" text="THỜI GIAN THAM GIA" prefWidth="110.0"/>
+                            <TableColumn fx:id="colName" text="BÃ DANH" prefWidth="120.0"/>
+                            <TableColumn fx:id="colAddress" text="Äá»ŠA CHá»ˆ Máº NG" prefWidth="150.0"/>
+                            <TableColumn fx:id="colTime" text="THá»œI GIAN THAM GIA" prefWidth="110.0"/>
                         </columns>
                         <columnResizePolicy>
                             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
@@ -104,20 +107,20 @@
                     </TableView>
 
                     <HBox alignment="CENTER_RIGHT" spacing="8">
-                        <Button text="NGẮT KẾT NỐI MÁY ĐÃ CHỌN" onAction="#handleDisconnectSelectedClient"
+                        <Button text="NGáº®T Káº¾T Ná»I MÃY ÄÃƒ CHá»ŒN" onAction="#handleDisconnectSelectedClient"
                                 styleClass="button-danger"/>
                     </HBox>
                 </VBox>
 
-                <!-- Cột phải: Nhật ký hoạt động máy chủ -->
+                <!-- Cá»™t pháº£i: Nháº­t kÃ½ hoáº¡t Ä‘á»™ng mÃ¡y chá»§ -->
                 <VBox styleClass="terminal-panel" spacing="8">
                     <padding>
                         <Insets top="8" right="8" bottom="8" left="8"/>
                     </padding>
                     <HBox alignment="CENTER_LEFT">
-                        <Label text="[ NHẬT KÝ HOẠT ĐỘNG ]" styleClass="panel-header"/>
+                        <Label text="[ NHáº¬T KÃ HOáº T Äá»˜NG ]" styleClass="panel-header"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="XÓA NHẬT KÝ" onAction="#handleClearLog" styleClass="button"/>
+                        <Button text="XÃ“A NHáº¬T KÃ" onAction="#handleClearLog" styleClass="button"/>
                     </HBox>
 
                     <TextArea fx:id="logTextArea" editable="false" wrapText="true" VBox.vgrow="ALWAYS"
@@ -127,17 +130,17 @@
         </VBox>
     </center>
 
-    <!-- Thanh trạng thái dưới cùng -->
+    <!-- Thanh tráº¡ng thÃ¡i dÆ°á»›i cÃ¹ng -->
     <bottom>
         <HBox styleClass="hud-status-bar" spacing="16" alignment="CENTER_LEFT">
             <padding>
                 <Insets top="6" right="16" bottom="6" left="16"/>
             </padding>
-            <Label fx:id="footerClientsLabel" text="Máy khách: 0 trực tuyến" styleClass="telemetry-label"/>
-            <Label fx:id="footerStorageLabel" text="Kho lưu trữ: 0 tệp" styleClass="telemetry-label"/>
-            <Button text="📂 MỞ KHO TẬP TIN" onAction="#handleOpenStorageFolder" styleClass="button"/>
+            <Label fx:id="footerClientsLabel" text="MÃ¡y khÃ¡ch: 0 trá»±c tuyáº¿n" styleClass="telemetry-label"/>
+            <Label fx:id="footerStorageLabel" text="Kho lÆ°u trá»¯: 0 tá»‡p" styleClass="telemetry-label"/>
+            <Button text="ðŸ“‚ Má»ž KHO Táº¬P TIN" onAction="#handleOpenStorageFolder" styleClass="button"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Label fx:id="serverClockLabel" text="GIỜ HỆ THỐNG: 00:00:00" styleClass="telemetry-label"/>
+            <Label fx:id="serverClockLabel" text="GIá»œ Há»† THá»NG: 00:00:00" styleClass="telemetry-label"/>
         </HBox>
     </bottom>
 </BorderPane>
