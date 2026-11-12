@@ -275,9 +275,13 @@ public class ClientHandler implements Runnable {
 
     private static String extractParam(String json, String key) {
         if (json == null) return null;
-        String pattern = "\"" + key + "\"\\s*:\\s*\"([^\"]*)\"";
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile(pattern).matcher(json);
-        if (m.find()) return m.group(1);
+        String strPattern = "\"" + key + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(strPattern).matcher(json);
+        if (m.find()) return m.group(1).replace("\\\"", "\"").replace("\\\\", "\\");
+
+        String rawPattern = "\"" + key + "\"\\s*:\\s*([^,\"}]+)";
+        java.util.regex.Matcher rm = java.util.regex.Pattern.compile(rawPattern).matcher(json);
+        if (rm.find()) return rm.group(1).trim();
         return null;
     }
 }

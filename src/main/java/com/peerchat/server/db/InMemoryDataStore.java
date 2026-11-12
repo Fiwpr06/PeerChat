@@ -46,9 +46,15 @@ public class InMemoryDataStore implements ChatDataStore {
 
     @Override
     public List<Message> getRecentMessages(int limit) {
-        int size = messageHistory.size();
+        List<Message> publicOnly = new ArrayList<>();
+        for (Message m : messageHistory) {
+            if (m.getTargetId() != null && "ALL".equalsIgnoreCase(m.getTargetId())) {
+                publicOnly.add(m);
+            }
+        }
+        int size = publicOnly.size();
         int fromIndex = Math.max(0, size - limit);
-        return new ArrayList<>(messageHistory.subList(fromIndex, size));
+        return new ArrayList<>(publicOnly.subList(fromIndex, size));
     }
 
     @Override
