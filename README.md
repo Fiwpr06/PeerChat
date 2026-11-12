@@ -70,6 +70,29 @@ Dự án được xây dựng phục vụ đồ án môn học **Lập trình M�
 - **Chia nhỏ khối dữ liệu (Chunking)**: File được chia nhỏ thành các chunk 64 KB (`CHUNK_SIZE`), đọc và stream qua Socket bằng bộ đệm tĩnh giúp tiết kiệm RAM, truyền mượt mà cả file dung lượng lớn.
 - **Toàn vẹn dữ liệu SHA-256**: Hệ thống tự động tính và đối soát mã băm SHA-256 sau khi tải về, hiển thị kết quả xác thực xanh `[ ĐÃ TẢI XONG // SHA-256 TOÀN VẸN 100% ]`.
 
+### 2.5. Quản Lý Nhóm Multicast, Khám Phá Nhóm Mở (Group Discovery) & Quy Trình Xét Duyệt Thành Viên
+- **Khám Phá Nhóm Mở (Group Discovery - Tương tự Facebook Groups)**:
+  - Khi một nhóm được tạo ra, nhóm đó lập tức hiển thị trên danh bạ Nhóm của **tất cả người dùng trong phòng**, không còn bị ẩn hoàn toàn như trước.
+  - Người dùng có thể tìm kiếm, nhận biết sự tồn tại của nhóm và loại hình nhóm (**KÍN** hoặc **CÔNG KHAI**).
+- **Phân Lập & Bảo Mật Nội Dung Nhóm Kín Tuyệt Đối**:
+  - Với nhóm kín, người dùng chưa phải thành viên chỉ thấy tên nhóm và thông tin trưởng nhóm. Toàn bộ tin nhắn trò chuyện, hình ảnh và kho tệp tin của nhóm bị khóa hoàn toàn.
+  - Giao diện trung tâm hiển thị Banner khóa kín bảo mật kèm nút **`[ XIN VÀO NHÓM ]`**. Khi đã gửi yêu cầu, nút tự động chuyển thành **`[ ĐANG CHỜ DUYỆT // HỦY YÊU CẦU ]`** cho phép người xin tự hủy nếu muốn.
+- **Quyền Quản Trị Trưởng Nhóm (Admin Controls)**:
+  - Chỉ Trưởng nhóm (người tạo) mới có huy hiệu bánh răng quản trị `[ ⚙ QUẢN TRỊ ]`.
+  - Hộp thoại quản trị chuyên nghiệp cho phép:
+    1. **Xét duyệt thành viên**: Danh sách người xin vào nhóm kèm 2 nút **`[ ✓ ĐỒNG Ý ]`** hoặc **`[ ✕ TỪ CHỐI ]`**.
+    2. **Kích thành viên (Kick Member)**: Loại bỏ thành viên khỏi nhóm tức thời.
+    3. **Chuyển đổi chế độ Kín ⇄ Công khai**: Trưởng nhóm có thể linh hoạt chuyển nhóm kín thành nhóm công khai (hoặc ngược lại) chỉ với 1 cú click.
+- **Nhóm Công Khai (Public Group)**:
+  - Người dùng bên ngoài có thể bấm nút **`[ THAM GIA TRỰC TIẾP ]`** để vào nhóm trò chuyện ngay mà không cần chờ trưởng nhóm phê duyệt.
+- **Bảo Vệ Đa Lớp (Dual-Layer Security)**:
+  - Quyền hạn và phân lập dữ liệu được kiểm tra nghiêm ngặt tại cả Client và Server: Server chặn đứng mọi nỗ lực multicast tin nhắn hoặc tải tệp nếu client không có ID trong `memberIds` của nhóm.
+
+### 2.6. Hệ Thống Biểu Tượng Vector Thuần JavaFX (IconUtils)
+- **Quy chuẩn không dùng emoji hệ điều hành**:
+  - Toàn bộ giao diện nhóm và trạng thái thành viên sử dụng **`SVGPath` vector** do hệ thống tự render bằng mã Java thuần (`IconUtils.java`), tuyệt đối không phụ thuộc vào font emoji của Windows/macOS hay lỗi vỡ font ký tự.
+  - Hỗ trợ các biểu tượng vector sắc nét chuẩn NieR:Automata: Khóa bảo mật (`createLockIcon`), Trái đất công khai (`createGlobeIcon`), Bánh răng cài đặt (`createGearIcon`), Dấu tích duyệt (`createCheckIcon`), Dấu chéo từ chối (`createCrossIcon`), Đồng hồ cát chờ duyệt (`createHourglassIcon`), Rời nhóm (`createExitIcon`), Thêm người (`createUserPlusIcon`), Kích người (`createUserMinusIcon`).
+
 ---
 
 ## 3. Giao Thức Đóng Khung Gói Tin (TCP Framing Protocol)
@@ -103,6 +126,17 @@ Do TCP là một dòng byte liên tục (byte-stream) không phân tách ranh gi
 | `24` | `FILE_DATA` | Dữ liệu nhị phân của từng chunk (kèm UUID file và chỉ số chunk). |
 | `25` | `FILE_COMPLETE` | Thông báo đã gửi toàn bộ chunk của file. |
 | `26` | `FILE_STATUS` | Báo cáo trạng thái hoàn thành hoặc đối soát mã băm. |
+| `30` | `CREATE_GROUP` | Khởi tạo nhóm trò chuyện mới (Công khai hoặc Kín). |
+| `31` | `JOIN_GROUP` | Tham gia trực tiếp vào nhóm (dành cho nhóm công khai). |
+| `32` | `LEAVE_GROUP` | Tự rời khỏi nhóm trò chuyện. |
+| `33` | `GROUP_LIST_UPDATE` | Server broadcast danh sách nhóm và trạng thái thành viên/xin vào. |
+| `34` | `GROUP_ADD_USER` | Trưởng nhóm thêm trực tiếp thành viên vào nhóm. |
+| `35` | `GROUP_KICK_USER` | Trưởng nhóm kích một thành viên ra khỏi nhóm. |
+| `36` | `GROUP_REQUEST_JOIN` | Gửi yêu cầu xin vào nhóm kín (chờ trưởng nhóm phê duyệt). |
+| `37` | `GROUP_APPROVE_REQUEST`| Trưởng nhóm đồng ý phê duyệt yêu cầu xin vào nhóm. |
+| `38` | `GROUP_REJECT_REQUEST` | Trưởng nhóm từ chối yêu cầu xin vào nhóm. |
+| `39` | `GROUP_CANCEL_REQUEST` | Người dùng tự hủy yêu cầu xin vào nhóm đã gửi trước đó. |
+| `40` | `GROUP_TOGGLE_PUBLIC` | Trưởng nhóm chuyển đổi chế độ nhóm Kín ⇄ Công khai. |
 
 ### 3.3. Định Dạng Chunk Nhị Phân (`FILE_DATA`)
 Phần payload của gói `FILE_DATA` được đóng gói nhị phân như sau:
@@ -132,6 +166,7 @@ PeerChat/
     │       │   ├── model/
     │       │   │   ├── ClientInfo.java      # Model thông tin người dùng online
     │       │   │   ├── FileInfo.java        # Model siêu dữ liệu file và chunking
+    │       │   │   ├── GroupInfo.java       # Model nhóm, thành viên, trạng thái kín/công khai & danh sách chờ duyệt
     │       │   │   └── Message.java         # Model tin nhắn chat (broadcast/direct)
     │       │   ├── protocol/
     │       │   │   ├── MessageType.java     # Định nghĩa các mã lệnh giao thức
@@ -172,7 +207,8 @@ PeerChat/
     │           │   ├── ChatService.java     # Xử lý logic nghiệp vụ chat phía client
     │           │   └── FileTransferService.java # Xử lý đọc/ghi file, chunking & SHA-256
     │           └── util/
-    │               └── ClientUtils.java     # Điều phối luồng an toàn qua JavaFX UI Thread
+    │               ├── ClientUtils.java     # Điều phối luồng an toàn qua JavaFX UI Thread
+    │               └── IconUtils.java       # Bộ vẽ biểu tượng vector SVGPath chuẩn NieR (không dùng emoji OS)
     │
     └── resources/
         ├── css/
@@ -251,3 +287,5 @@ Dự án đã tích hợp sẵn các kịch bản tự động tối ưu hóa, *
 | 10 | **Đa luồng (Multithreading)** | Hoàn tất | Server dùng `ExecutorService` cached thread pool; Client có luồng gửi/nhận riêng biệt. |
 | 11 | **Thread Safety & JavaFX UI** | Hoàn tất | Mọi cập nhật giao diện đều qua `Platform.runLater()`; Socket stream được bảo vệ an toàn luồng. |
 | 12 | **Đơn giản & Dễ demo** | Hoàn tất | Một project duy nhất, có script chạy 1-click, log tiếng Anh chống lỗi font console, comment tiếng Việt dễ hiểu. |
+| 13 | **Multicast Group & Discovery** | Hoàn tất | Hỗ trợ nhóm kín/công khai; công khai nhóm trên danh bạ để tìm kiếm (tương tự FB Groups), khóa nội dung với người ngoài. |
+| 14 | **Quy trình Xin vào & Phê duyệt nhóm** | Hoàn tất | Người dùng gửi/hủy yêu cầu xin vào nhóm; Trưởng nhóm duyệt/từ chối/kích thành viên/chuyển đổi kín ⇄ công khai; vẽ biểu tượng vector JavaFX thuần không dùng emoji OS. |
