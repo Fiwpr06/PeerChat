@@ -98,8 +98,13 @@ public class ChatService {
     // ==========================================
 
     public void sendCreateGroup(String groupName) {
+        sendCreateGroup(groupName, false);
+    }
+
+    public void sendCreateGroup(String groupName, boolean isPublic) {
         if (groupName == null || groupName.trim().isEmpty()) return;
-        ProtocolMessage msg = ProtocolMessage.createText(MessageType.CREATE_GROUP, groupName.trim());
+        String json = "{\"groupName\":\"" + groupName.trim().replace("\"", "\\\"") + "\",\"isPublic\":" + isPublic + "}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.CREATE_GROUP, json);
         sender.sendAsync(msg);
     }
 
@@ -112,6 +117,41 @@ public class ChatService {
     public void sendLeaveGroup(String groupId) {
         if (groupId == null || groupId.trim().isEmpty()) return;
         ProtocolMessage msg = ProtocolMessage.createText(MessageType.LEAVE_GROUP, groupId.trim());
+        sender.sendAsync(msg);
+    }
+
+    public void sendRequestJoinGroup(String groupId) {
+        if (groupId == null || groupId.trim().isEmpty()) return;
+        String json = "{\"groupId\":\"" + groupId.trim() + "\"}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_REQUEST_JOIN, json);
+        sender.sendAsync(msg);
+    }
+
+    public void sendCancelJoinRequest(String groupId) {
+        if (groupId == null || groupId.trim().isEmpty()) return;
+        String json = "{\"groupId\":\"" + groupId.trim() + "\"}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_CANCEL_REQUEST, json);
+        sender.sendAsync(msg);
+    }
+
+    public void sendApproveJoinRequest(String groupId, String targetClientId) {
+        if (groupId == null || targetClientId == null) return;
+        String json = "{\"groupId\":\"" + groupId + "\",\"targetClientId\":\"" + targetClientId + "\"}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_APPROVE_REQUEST, json);
+        sender.sendAsync(msg);
+    }
+
+    public void sendRejectJoinRequest(String groupId, String targetClientId) {
+        if (groupId == null || targetClientId == null) return;
+        String json = "{\"groupId\":\"" + groupId + "\",\"targetClientId\":\"" + targetClientId + "\"}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_REJECT_REQUEST, json);
+        sender.sendAsync(msg);
+    }
+
+    public void sendToggleGroupPublic(String groupId, boolean isPublic) {
+        if (groupId == null) return;
+        String json = "{\"groupId\":\"" + groupId + "\",\"isPublic\":" + isPublic + "}";
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_TOGGLE_PUBLIC, json);
         sender.sendAsync(msg);
     }
 
