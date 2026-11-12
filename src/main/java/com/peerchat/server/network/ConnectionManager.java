@@ -73,7 +73,7 @@ public class ConnectionManager {
             clientListeners.forEach(l -> l.onClientRemoved(clientId));
             broadcastClientList();
 
-            // Dọn dẹp thành viên trong các nhóm Multicast
+            // Dọn dẹp thành viên và yêu cầu trong các nhóm Multicast
             boolean groupChanged = false;
             for (Map.Entry<String, Set<String>> entry : groupMembers.entrySet()) {
                 if (entry.getValue().remove(clientId)) {
@@ -87,6 +87,12 @@ public class ConnectionManager {
                         String nextAdmin = entry.getValue().iterator().next();
                         info.setCreatorId(nextAdmin);
                     }
+                }
+            }
+            for (GroupInfo info : groups.values()) {
+                if (info.hasJoinRequest(clientId)) {
+                    info.removeJoinRequest(clientId);
+                    groupChanged = true;
                 }
             }
             if (groupChanged) {
@@ -121,9 +127,13 @@ public class ConnectionManager {
     // ==========================================
 
     public GroupInfo createGroup(String groupName, String creatorId) {
+        return createGroup(groupName, creatorId, false);
+    }
+
+    public GroupInfo createGroup(String groupName, String creatorId, boolean isPublic) {
         String groupId = "grp_" + java.util.UUID.randomUUID().toString().substring(0, 8);
         String name = (groupName != null && !groupName.trim().isEmpty()) ? groupName.trim() : "Nhóm-" + groupId.substring(4);
-        GroupInfo info = new GroupInfo(groupId, name, creatorId);
+        GroupInfo info = new GroupInfo(groupId, name, creatorId, isPublic);
         groups.put(groupId, info);
 
         Set<String> members = ConcurrentHashMap.newKeySet();
@@ -132,7 +142,7 @@ public class ConnectionManager {
         }
         groupMembers.put(groupId, members);
 
-        LOGGER.info("[GROUP_CREATED] Group created: " + info);
+        LOGGER.info("[GROUP_CREATED] Group created: " + info + " [isPublic=" + isPublic + "]");
         DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
             DataStoreManager.getInstance().getStore().saveGroup(info);
         });
@@ -146,9 +156,115 @@ public class ConnectionManager {
         GroupInfo info = groups.get(groupId);
         if (members == null || info == null) return false;
 
+        if (!info.isPublic()) {
+            // Nhóm kín: chuyển thành yêu cầu xin vào nhóm
+            return requestJoinGroup(groupId, clientId);
+        }
+
         members.add(clientId);
         info.addMember(clientId);
-        LOGGER.info("[GROUP_JOINED] Client " + clientId + " joined " + groupId);
+        LOGGER.info("[GROUP_JOINED] Client " + clientId + " joined public group " + groupId);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().addGroupMember(groupId, clientId);
+        });
+        broadcastGroupList();
+        return true;
+    }
+
+    public boolean requestJoinGroup(String groupId, String clientId) {
+        if (groupId == null || clientId == null) return false;
+        GroupInfo info = groups.get(groupId);
+        Set<String> members = groupMembers.get(groupId);
+        if (info == null || members == null) return false;
+
+        if (members.contains(clientId)) {
+            return true;
+        }
+
+        info.addJoinRequest(clientId);
+        LOGGER.info("[GROUP_JOIN_REQUESTED] Client " + clientId + " requested to join " + groupId);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().addJoinRequest(groupId, clientId);
+        });
+        broadcastGroupList();
+        return true;
+    }
+
+    public boolean cancelJoinRequest(String groupId, String clientId) {
+        if (groupId == null || clientId == null) return false;
+        GroupInfo info = groups.get(groupId);
+        if (info == null) return false;
+
+        info.removeJoinRequest(clientId);
+        LOGGER.info("[GROUP_JOIN_CANCELLED] Client " + clientId + " cancelled request for " + groupId);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().removeJoinRequest(groupId, clientId);
+        });
+        broadcastGroupList();
+        return true;
+    }
+
+    public boolean approveJoinRequest(String groupId, String targetClientId, String requesterId) {
+        if (groupId == null || targetClientId == null || requesterId == null) return false;
+        GroupInfo info = groups.get(groupId);
+        Set<String> members = groupMembers.get(groupId);
+        if (info == null || members == null) return false;
+
+        // Chỉ Admin mới có quyền duyệt
+        if (!requesterId.equals(info.getCreatorId())) {
+            LOGGER.warning("[GROUP_APPROVE_DENIED] Client " + requesterId + " is not creator of " + groupId);
+            return false;
+        }
+
+        info.removeJoinRequest(targetClientId);
+        members.add(targetClientId);
+        info.addMember(targetClientId);
+        LOGGER.info("[GROUP_REQUEST_APPROVED] Target " + targetClientId + " approved for " + groupId + " by " + requesterId);
+
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().removeJoinRequest(groupId, targetClientId);
+            DataStoreManager.getInstance().getStore().addGroupMember(groupId, targetClientId);
+        });
+        broadcastGroupList();
+        return true;
+    }
+
+    public boolean rejectJoinRequest(String groupId, String targetClientId, String requesterId) {
+        if (groupId == null || targetClientId == null || requesterId == null) return false;
+        GroupInfo info = groups.get(groupId);
+        if (info == null) return false;
+
+        // Chỉ Admin mới có quyền từ chối
+        if (!requesterId.equals(info.getCreatorId())) {
+            LOGGER.warning("[GROUP_REJECT_DENIED] Client " + requesterId + " is not creator of " + groupId);
+            return false;
+        }
+
+        info.removeJoinRequest(targetClientId);
+        LOGGER.info("[GROUP_REQUEST_REJECTED] Target " + targetClientId + " rejected for " + groupId + " by " + requesterId);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().removeJoinRequest(groupId, targetClientId);
+        });
+        broadcastGroupList();
+        return true;
+    }
+
+    public boolean toggleGroupPublic(String groupId, boolean isPublic, String requesterId) {
+        if (groupId == null || requesterId == null) return false;
+        GroupInfo info = groups.get(groupId);
+        if (info == null) return false;
+
+        // Chỉ Admin mới có quyền đổi chế độ công khai
+        if (!requesterId.equals(info.getCreatorId())) {
+            LOGGER.warning("[GROUP_TOGGLE_PUBLIC_DENIED] Client " + requesterId + " is not creator of " + groupId);
+            return false;
+        }
+
+        info.setPublic(isPublic);
+        LOGGER.info("[GROUP_TOGGLE_PUBLIC] Group " + groupId + " public=" + isPublic + " by " + requesterId);
+        DataStoreManager.getInstance().getAsyncDbWorker().submit(() -> {
+            DataStoreManager.getInstance().getStore().updateGroupPublicStatus(groupId, isPublic);
+        });
         broadcastGroupList();
         return true;
     }
@@ -262,17 +378,18 @@ public class ConnectionManager {
         return list;
     }
 
-    // Gửi danh sách nhóm phù hợp tới từng client riêng lẻ (chỉ gửi nhóm client thuộc về)
+    // Gửi danh sách tất cả các nhóm tới toàn bộ client (Group Discovery)
     public void broadcastGroupList() {
-        for (ConnectedClient client : clients.values()) {
-            sendGroupListTo(client);
-        }
+        List<GroupInfo> allGroups = getAllGroups();
+        String json = GroupInfo.listToJson(allGroups);
+        ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_LIST_UPDATE, json);
+        broadcastMessage(msg, null);
     }
 
     public void sendGroupListTo(ConnectedClient client) {
         if (client != null) {
-            List<GroupInfo> list = getGroupsForClient(client.getClientId());
-            String json = GroupInfo.listToJson(list);
+            List<GroupInfo> allGroups = getAllGroups();
+            String json = GroupInfo.listToJson(allGroups);
             ProtocolMessage msg = ProtocolMessage.createText(MessageType.GROUP_LIST_UPDATE, json);
             try {
                 client.sendMessage(msg);

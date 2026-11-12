@@ -165,8 +165,13 @@ public class ClientHandler implements Runnable {
                 fileTransferService.handleFileDownloadRequest(fileId, clientId);
             }
             case CREATE_GROUP -> {
-                String groupName = msg.getPayloadAsText();
-                connectionManager.createGroup(groupName, clientId);
+                String payload = msg.getPayloadAsText();
+                String groupName = extractParam(payload, "groupName");
+                boolean isPublic = Boolean.parseBoolean(extractParam(payload, "isPublic"));
+                if (groupName == null || groupName.isEmpty()) {
+                    groupName = payload;
+                }
+                connectionManager.createGroup(groupName, clientId, isPublic);
             }
             case JOIN_GROUP -> {
                 String groupId = msg.getPayloadAsText().trim();
@@ -175,6 +180,46 @@ public class ClientHandler implements Runnable {
             case LEAVE_GROUP -> {
                 String groupId = msg.getPayloadAsText().trim();
                 connectionManager.leaveGroup(groupId, clientId);
+            }
+            case GROUP_REQUEST_JOIN -> {
+                String payload = msg.getPayloadAsText();
+                String groupId = extractParam(payload, "groupId");
+                if (groupId == null || groupId.isEmpty()) {
+                    groupId = payload.trim();
+                }
+                connectionManager.requestJoinGroup(groupId, clientId);
+            }
+            case GROUP_CANCEL_REQUEST -> {
+                String payload = msg.getPayloadAsText();
+                String groupId = extractParam(payload, "groupId");
+                if (groupId == null || groupId.isEmpty()) {
+                    groupId = payload.trim();
+                }
+                connectionManager.cancelJoinRequest(groupId, clientId);
+            }
+            case GROUP_APPROVE_REQUEST -> {
+                String payload = msg.getPayloadAsText();
+                String groupId = extractParam(payload, "groupId");
+                String targetId = extractParam(payload, "targetClientId");
+                if (groupId != null && targetId != null) {
+                    connectionManager.approveJoinRequest(groupId, targetId, clientId);
+                }
+            }
+            case GROUP_REJECT_REQUEST -> {
+                String payload = msg.getPayloadAsText();
+                String groupId = extractParam(payload, "groupId");
+                String targetId = extractParam(payload, "targetClientId");
+                if (groupId != null && targetId != null) {
+                    connectionManager.rejectJoinRequest(groupId, targetId, clientId);
+                }
+            }
+            case GROUP_TOGGLE_PUBLIC -> {
+                String payload = msg.getPayloadAsText();
+                String groupId = extractParam(payload, "groupId");
+                boolean isPublic = Boolean.parseBoolean(extractParam(payload, "isPublic"));
+                if (groupId != null) {
+                    connectionManager.toggleGroupPublic(groupId, isPublic, clientId);
+                }
             }
             case GROUP_ADD_USER -> {
                 String payload = msg.getPayloadAsText();
