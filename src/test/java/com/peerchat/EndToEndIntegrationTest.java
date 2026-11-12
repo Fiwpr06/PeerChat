@@ -81,7 +81,12 @@ public class EndToEndIntegrationTest {
         }
 
         void createGroup(String groupName) throws Exception {
-            ProtocolMessage proto = ProtocolMessage.createText(MessageType.CREATE_GROUP, groupName);
+            createGroup(groupName, false);
+        }
+
+        void createGroup(String groupName, boolean isPublic) throws Exception {
+            String json = "{\"groupName\":\"" + groupName + "\",\"isPublic\":" + isPublic + "}";
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.CREATE_GROUP, json);
             proto.writeTo(out);
         }
 
@@ -92,6 +97,36 @@ public class EndToEndIntegrationTest {
 
         void leaveGroup(String groupId) throws Exception {
             ProtocolMessage proto = ProtocolMessage.createText(MessageType.LEAVE_GROUP, groupId);
+            proto.writeTo(out);
+        }
+
+        void requestJoinGroup(String groupId) throws Exception {
+            String json = "{\"groupId\":\"" + groupId + "\"}";
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.GROUP_REQUEST_JOIN, json);
+            proto.writeTo(out);
+        }
+
+        void cancelJoinRequest(String groupId) throws Exception {
+            String json = "{\"groupId\":\"" + groupId + "\"}";
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.GROUP_CANCEL_REQUEST, json);
+            proto.writeTo(out);
+        }
+
+        void approveJoinRequest(String groupId, String targetClientId) throws Exception {
+            String json = "{\"groupId\":\"" + groupId + "\",\"targetClientId\":\"" + targetClientId + "\"}";
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.GROUP_APPROVE_REQUEST, json);
+            proto.writeTo(out);
+        }
+
+        void rejectJoinRequest(String groupId, String targetClientId) throws Exception {
+            String json = "{\"groupId\":\"" + groupId + "\",\"targetClientId\":\"" + targetClientId + "\"}";
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.GROUP_REJECT_REQUEST, json);
+            proto.writeTo(out);
+        }
+
+        void toggleGroupPublic(String groupId, boolean isPublic) throws Exception {
+            String json = "{\"groupId\":\"" + groupId + "\",\"isPublic\":" + isPublic + "}";
+            ProtocolMessage proto = ProtocolMessage.createText(MessageType.GROUP_TOGGLE_PUBLIC, json);
             proto.writeTo(out);
         }
 
@@ -126,6 +161,22 @@ public class EndToEndIntegrationTest {
                     List<GroupInfo> groups = GroupInfo.listFromJson(m.getPayloadAsText());
                     if (expectedGroupName == null || groups.stream().anyMatch(g -> expectedGroupName.equals(g.getGroupName()))) {
                         return m;
+                    }
+                }
+            }
+            return null;
+        }
+
+        GroupInfo pollGroupWithCondition(String groupId, java.util.function.Predicate<GroupInfo> condition, long timeoutSeconds) throws InterruptedException {
+            long deadline = System.currentTimeMillis() + (timeoutSeconds * 1000);
+            while (System.currentTimeMillis() < deadline) {
+                ProtocolMessage m = incomingQueue.poll(200, TimeUnit.MILLISECONDS);
+                if (m != null && m.getType() == MessageType.GROUP_LIST_UPDATE) {
+                    List<GroupInfo> groups = GroupInfo.listFromJson(m.getPayloadAsText());
+                    for (GroupInfo g : groups) {
+                        if (g.getGroupId().equals(groupId) && condition.test(g)) {
+                            return g;
+                        }
                     }
                 }
             }
@@ -451,7 +502,7 @@ public class EndToEndIntegrationTest {
 
     @Test
     @Order(8)
-    @DisplayName("Kiem thu nhom kin: Alice tao nhom thi Bob khong thay, chi thay khi Alice them Bob vao va bien mat khi bi kich")
+    @DisplayName("Kiem thu Group Discovery: Alice tao nhom thi Bob va moi nguoi deu thay, va luong xin vao/duyet")
     void testPrivateGroupVisibilityAndAdminAddKick() throws Exception {
         TestClient alice = new TestClient("Alice");
         TestClient bob = new TestClient("Bob");
@@ -460,8 +511,8 @@ public class EndToEndIntegrationTest {
             alice.connect(serverPort, roomCode);
             bob.connect(serverPort, roomCode);
 
-            // Alice tạo nhóm "Nhom-Tac-Chien"
-            alice.createGroup("Nhom-Tac-Chien");
+            // Alice tạo nhóm "Nhom-Tac-Chien" (mặc định là kín)
+            alice.createGroup("Nhom-Tac-Chien", false);
 
             // Alice (người tạo) nhận được GROUP_LIST_UPDATE chứa Nhom-Tac-Chien
             ProtocolMessage aliceGroupMsg = alice.pollGroupUpdate("Nhom-Tac-Chien", 5);
@@ -471,27 +522,41 @@ public class EndToEndIntegrationTest {
                     .filter(g -> "Nhom-Tac-Chien".equals(g.getGroupName()))
                     .findFirst()
                     .orElseThrow();
+            assertTrue(group.hasMember(alice.clientId));
 
-            // Bob KHÔNG được thấy nhóm này vì là nhóm kín (Bob không phải thành viên)
-            ProtocolMessage bobGroupMsg = bob.pollGroupUpdate("Nhom-Tac-Chien", 1);
-            assertNull(bobGroupMsg, "Bob tuyet doi KHONG duoc thay nhom do Alice tao ra khi chua duoc moi");
+            // Bob CŨNG THẤY nhóm Nhom-Tac-Chien (Group Discovery theo yêu cầu mới)
+            GroupInfo groupSeenByBob = bob.pollGroupWithCondition(group.getGroupId(), g -> true, 5);
+            assertNotNull(groupSeenByBob, "Bob phai thay nhom trong danh ba nhom (Group Discovery)");
+            assertFalse(groupSeenByBob.hasMember(bob.clientId), "Bob chua duoc duyet thi chua phai la thanh vien");
 
-            // Alice (Admin) thêm Bob vào nhóm
-            alice.addUserToGroup(group.getGroupId(), bob.clientId);
+            // Bob gửi yêu cầu xin vào nhóm
+            bob.requestJoinGroup(group.getGroupId());
 
-            // Bây giờ Bob PHẢI nhận được GROUP_LIST_UPDATE chứa nhóm này
-            ProtocolMessage bobUpdatedMsg = bob.pollGroupUpdate("Nhom-Tac-Chien", 5);
-            assertNotNull(bobUpdatedMsg, "Bob phai nhan duoc thong tin nhom sau khi duoc Admin them vao");
+            // Alice nhận được cập nhật danh sách nhóm với Bob nằm trong pending requests
+            GroupInfo groupWithPending = alice.pollGroupWithCondition(group.getGroupId(), g -> g.hasJoinRequest(bob.clientId), 5);
+            assertNotNull(groupWithPending, "Alice phai thay yeu cau cua Bob trong danh sach cho duyet");
+            assertTrue(groupWithPending.hasJoinRequest(bob.clientId));
+
+            // Bob cũng nhận được cập nhật hiển thị trạng thái đang chờ duyệt
+            GroupInfo bobViewPending = bob.pollGroupWithCondition(group.getGroupId(), g -> g.hasJoinRequest(bob.clientId), 5);
+            assertNotNull(bobViewPending, "Bob phai thay trang thai cua minh la cho duyet");
+            assertTrue(bobViewPending.hasJoinRequest(bob.clientId));
+
+            // Alice duyệt cho Bob vào nhóm
+            alice.approveJoinRequest(group.getGroupId(), bob.clientId);
+
+            // Bob nhận được bản cập nhật danh sách nhóm xác nhận đã là thành viên
+            GroupInfo groupApproved = bob.pollGroupWithCondition(group.getGroupId(), g -> g.hasMember(bob.clientId), 5);
+            assertNotNull(groupApproved, "Bob da duoc duyet phai la thanh vien chinh thuc");
+            assertTrue(groupApproved.hasMember(bob.clientId));
 
             // Alice kích Bob ra khỏi nhóm
             alice.kickUserFromGroup(group.getGroupId(), bob.clientId);
 
-            // Bob nhận bản cập nhật danh sách nhóm mới không còn chứa nhóm này
-            ProtocolMessage bobKickedMsg = bob.pollMessage(MessageType.GROUP_LIST_UPDATE, 5);
-            assertNotNull(bobKickedMsg, "Bob phai nhan duoc GROUP_LIST_UPDATE sau khi bi kich");
-            List<GroupInfo> bobRemainingGroups = GroupInfo.listFromJson(bobKickedMsg.getPayloadAsText());
-            assertFalse(bobRemainingGroups.stream().anyMatch(g -> group.getGroupId().equals(g.getGroupId())),
-                    "Nhom phai bien mat khoi danh sach cua Bob sau khi bi kich");
+            // Bob nhận bản cập nhật danh sách nhóm mới: Nhóm vẫn hiển thị nhưng Bob không còn là thành viên
+            GroupInfo groupAfterKick = bob.pollGroupWithCondition(group.getGroupId(), g -> !g.hasMember(bob.clientId), 5);
+            assertNotNull(groupAfterKick, "Bob phai nhan duoc GROUP_LIST_UPDATE sau khi bi kich");
+            assertFalse(groupAfterKick.hasMember(bob.clientId));
 
         } finally {
             alice.disconnect();
@@ -617,8 +682,19 @@ public class EndToEndIntegrationTest {
 
             // Bob cố tình thêm Charlie vào nhóm (Bob KHÔNG phải admin) -> Server phải từ chối
             bob.addUserToGroup(secGroup.getGroupId(), charlie.clientId);
-            ProtocolMessage charlieCheck = charlie.pollGroupUpdate("Nhom-Bao-Mat", 1);
-            assertNull(charlieCheck, "Charlie khong duoc vao nhom vi Bob khong co quyen Admin");
+            Thread.sleep(100);
+
+            // Kiểm tra Charlie: Dù thấy nhóm trên danh bạ (Group Discovery) nhưng Charlie KHÔNG phải thành viên
+            ProtocolMessage charlieCheck = charlie.pollGroupUpdate("Nhom-Bao-Mat", 2);
+            if (charlieCheck != null) {
+                GroupInfo charlieView = GroupInfo.listFromJson(charlieCheck.getPayloadAsText()).stream()
+                        .filter(g -> secGroup.getGroupId().equals(g.getGroupId()))
+                        .findFirst()
+                        .orElse(null);
+                if (charlieView != null) {
+                    assertFalse(charlieView.hasMember(charlie.clientId), "Charlie khong the la thanh vien vi Bob khong co quyen Admin");
+                }
+            }
 
             // Bob cố tình kích Alice (Admin) -> Server phải từ chối
             bob.kickUserFromGroup(secGroup.getGroupId(), alice.clientId);
@@ -626,6 +702,10 @@ public class EndToEndIntegrationTest {
             alice.sendMessage("Admin van an toan!", secGroup.getGroupId());
             ProtocolMessage bobMsg = bob.pollMessage(MessageType.CHAT_BROADCAST, 5);
             assertNotNull(bobMsg, "Alice van o trong nhom vi Bob khong the kich Admin");
+
+            // Charlie tuyệt đối không nhận được tin multicast
+            ProtocolMessage charlieMsg = charlie.pollMessage(MessageType.CHAT_BROADCAST, 1);
+            assertNull(charlieMsg, "Charlie khong o trong nhom thi khong duoc nhan tin multicast");
 
         } finally {
             alice.disconnect();
@@ -709,5 +789,135 @@ public class EndToEndIntegrationTest {
         assertEquals("🎬", com.peerchat.client.controller.FileTransferController.getSimpleFileIcon("demo.mp4"));
         assertEquals("🖼", com.peerchat.client.controller.FileTransferController.getSimpleFileIcon("image.png"));
         assertEquals("🗎", com.peerchat.client.controller.FileTransferController.getSimpleFileIcon("archive.zip"));
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("Kiem thu nhom Cong khai: Bob co the tu do tham gia truc tiep ma khong can Alice phe duyet")
+    void test13_PublicGroupDirectJoin() throws Exception {
+        TestClient alice = new TestClient("Alice");
+        TestClient bob = new TestClient("Bob");
+
+        try {
+            alice.connect(serverPort, roomCode);
+            bob.connect(serverPort, roomCode);
+
+            // Alice tạo nhóm Công khai
+            alice.createGroup("Nhom-Cong-Khai", true);
+            ProtocolMessage gMsg = alice.pollGroupUpdate("Nhom-Cong-Khai", 5);
+            assertNotNull(gMsg);
+            GroupInfo pubGroup = GroupInfo.listFromJson(gMsg.getPayloadAsText()).stream()
+                    .filter(g -> "Nhom-Cong-Khai".equals(g.getGroupName()))
+                    .findFirst()
+                    .orElseThrow();
+            assertTrue(pubGroup.isPublic(), "Nhom phai o che do Cong khai");
+
+            // Bob cũng thấy nhóm xuất hiện (Group Discovery)
+            GroupInfo bobSeen = bob.pollGroupWithCondition(pubGroup.getGroupId(), g -> true, 5);
+            assertNotNull(bobSeen, "Bob phai thay nhom cong khai");
+            assertFalse(bobSeen.hasMember(bob.clientId));
+
+            // Bob thấy nhóm và bấm tham gia trực tiếp
+            bob.joinGroup(pubGroup.getGroupId());
+            GroupInfo bobJoined = bob.pollGroupWithCondition(pubGroup.getGroupId(), g -> g.hasMember(bob.clientId), 5);
+            assertNotNull(bobJoined, "Bob phai vao duoc nhom cong khai ngay lap tuc ma khong can duyet");
+            assertTrue(bobJoined.hasMember(bob.clientId));
+
+        } finally {
+            alice.disconnect();
+            bob.disconnect();
+        }
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("Kiem thu tu choi va huy yeu cau xin vao nhom kin")
+    void test14_JoinRequestRejectionAndCancellation() throws Exception {
+        TestClient alice = new TestClient("Alice");
+        TestClient bob = new TestClient("Bob");
+
+        try {
+            alice.connect(serverPort, roomCode);
+            bob.connect(serverPort, roomCode);
+
+            // Alice tạo nhóm kín
+            alice.createGroup("Nhom-Nghiem-Ngat", false);
+            ProtocolMessage gMsg = alice.pollGroupUpdate("Nhom-Nghiem-Ngat", 5);
+            assertNotNull(gMsg);
+            GroupInfo group = GroupInfo.listFromJson(gMsg.getPayloadAsText()).stream()
+                    .filter(g -> "Nhom-Nghiem-Ngat".equals(g.getGroupName()))
+                    .findFirst()
+                    .orElseThrow();
+
+            // Bob gửi yêu cầu xin vào
+            bob.requestJoinGroup(group.getGroupId());
+            GroupInfo groupPending = alice.pollGroupWithCondition(group.getGroupId(), g -> g.hasJoinRequest(bob.clientId), 5);
+            assertNotNull(groupPending, "Alice phai thay yeu cau cua Bob");
+
+            // Bob tự hủy yêu cầu
+            bob.cancelJoinRequest(group.getGroupId());
+            GroupInfo groupAfterCancel = alice.pollGroupWithCondition(group.getGroupId(), g -> !g.hasJoinRequest(bob.clientId), 5);
+            assertNotNull(groupAfterCancel, "Yeu cau cua Bob phai bi xoa sau khi huy");
+
+            // Bob gửi lại yêu cầu
+            bob.requestJoinGroup(group.getGroupId());
+            GroupInfo groupPendingAgain = alice.pollGroupWithCondition(group.getGroupId(), g -> g.hasJoinRequest(bob.clientId), 5);
+            assertNotNull(groupPendingAgain, "Alice phai thay yeu cau gui lai cua Bob");
+
+            // Alice từ chối yêu cầu
+            alice.rejectJoinRequest(group.getGroupId(), bob.clientId);
+            GroupInfo groupAfterReject = bob.pollGroupWithCondition(group.getGroupId(), g -> !g.hasJoinRequest(bob.clientId), 5);
+            assertNotNull(groupAfterReject, "Yeu cau cua Bob phai bi xoa sau khi Alice tu choi");
+            assertFalse(groupAfterReject.hasMember(bob.clientId), "Bob khong duoc tro thanh thanh vien khi bi tu choi");
+
+        } finally {
+            alice.disconnect();
+            bob.disconnect();
+        }
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("Kiem thu chuyen doi trang thai nhom Kin <-> Cong khai boi Truong nhom")
+    void test15_ToggleGroupPublicPrivate() throws Exception {
+        TestClient alice = new TestClient("Alice");
+        TestClient bob = new TestClient("Bob");
+
+        try {
+            alice.connect(serverPort, roomCode);
+            bob.connect(serverPort, roomCode);
+
+            // Alice tạo nhóm kín ban đầu
+            alice.createGroup("Nhom-Chuyen-Doi", false);
+            ProtocolMessage gMsg = alice.pollGroupUpdate("Nhom-Chuyen-Doi", 5);
+            assertNotNull(gMsg);
+            GroupInfo group = GroupInfo.listFromJson(gMsg.getPayloadAsText()).stream()
+                    .filter(g -> "Nhom-Chuyen-Doi".equals(g.getGroupName()))
+                    .findFirst()
+                    .orElseThrow();
+            assertFalse(group.isPublic(), "Ban dau phai la nhom kin");
+
+            // Alice chuyển nhóm sang Công khai
+            alice.toggleGroupPublic(group.getGroupId(), true);
+            GroupInfo groupPublic = bob.pollGroupWithCondition(group.getGroupId(), GroupInfo::isPublic, 5);
+            assertNotNull(groupPublic, "Bob phai thay nhom duoc chuyen sang Cong khai");
+            assertTrue(groupPublic.isPublic());
+
+            // Bob có thể tham gia trực tiếp vì đã là công khai
+            bob.joinGroup(group.getGroupId());
+            GroupInfo groupWithBob = bob.pollGroupWithCondition(group.getGroupId(), g -> g.hasMember(bob.clientId), 5);
+            assertNotNull(groupWithBob);
+            assertTrue(groupWithBob.hasMember(bob.clientId));
+
+            // Alice chuyển lại sang nhóm kín
+            alice.toggleGroupPublic(group.getGroupId(), false);
+            GroupInfo groupPrivate = alice.pollGroupWithCondition(group.getGroupId(), g -> !g.isPublic(), 5);
+            assertNotNull(groupPrivate, "Alice phai thay nhom da chuyen thanh nhom kin");
+            assertFalse(groupPrivate.isPublic());
+
+        } finally {
+            alice.disconnect();
+            bob.disconnect();
+        }
     }
 }
