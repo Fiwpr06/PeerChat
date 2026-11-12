@@ -6,6 +6,7 @@ import com.peerchat.client.network.MessageSender;
 import com.peerchat.client.service.ChatService;
 import com.peerchat.client.service.FileTransferService;
 import com.peerchat.client.util.ClientUtils;
+import com.peerchat.client.util.IconUtils;
 import com.peerchat.shared.model.ClientInfo;
 import com.peerchat.shared.model.FileInfo;
 import com.peerchat.shared.model.GroupInfo;
@@ -21,6 +22,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -37,6 +39,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.util.Pair;
 
 import java.io.File;
 import java.time.LocalDateTime;
@@ -218,7 +221,7 @@ public class ChatController {
         if (groupsListView == null) return;
         groupsListView.setItems(chatService.getAvailableGroups());
 
-        // Định dạng hiển thị từng nhóm Multicast (Chỉ hiển thị các nhóm kín mà người dùng tham gia)
+        // Định dạng hiển thị từng nhóm Multicast với Vector Icon và nhãn trạng thái NieR
         groupsListView.setCellFactory(param -> new ListCell<>() {
             @Override
             protected void updateItem(GroupInfo item, boolean empty) {
@@ -231,8 +234,18 @@ public class ChatController {
                     HBox cellBox = new HBox(6);
                     cellBox.setAlignment(Pos.CENTER_LEFT);
 
-                    Label icon = new Label("◈");
-                    icon.setStyle(isSelected() ? "-fx-text-fill: #b8522e; -fx-font-size: 11px;" : "-fx-text-fill: #1f4f6e; -fx-font-size: 11px;");
+                    String myId = chatService.getClientId();
+                    boolean isMember = item.hasMember(myId);
+                    boolean isPending = item.hasJoinRequest(myId);
+                    boolean isCreator = myId.equals(item.getCreatorId());
+
+                    // Biểu tượng Vector: Globe (Công khai) hoặc Lock (Kín)
+                    Node iconNode;
+                    if (item.isPublic()) {
+                        iconNode = IconUtils.createGlobeIcon(isSelected() ? IconUtils.COLOR_WHITE : IconUtils.COLOR_SLATE, 12);
+                    } else {
+                        iconNode = IconUtils.createLockIcon(isSelected() ? IconUtils.COLOR_WHITE : IconUtils.COLOR_OCHRE, 12);
+                    }
 
                     Label nameLabel = new Label(item.getGroupName());
                     nameLabel.setStyle(isSelected() ? "-fx-text-fill: #ffffff; -fx-font-weight: bold;" : "-fx-text-fill: #1c1b17; -fx-font-weight: bold;");
@@ -243,16 +256,15 @@ public class ChatController {
                     Region spacer = new Region();
                     HBox.setHgrow(spacer, Priority.ALWAYS);
 
-                    boolean isCreator = chatService.getClientId().equals(item.getCreatorId());
-
                     HBox actionsBox = new HBox(3);
                     actionsBox.setAlignment(Pos.CENTER_RIGHT);
 
                     if (isCreator) {
-                        Button manageBtn = new Button("⚙");
-                        manageBtn.setTooltip(new Tooltip("Quản trị nhóm (Thêm / Kích thành viên)"));
+                        Button manageBtn = new Button();
+                        manageBtn.setGraphic(IconUtils.createGearIcon(IconUtils.COLOR_CHARCOAL, 10));
+                        manageBtn.setTooltip(new Tooltip("Quản trị nhóm (Phê duyệt / Thêm / Kích)"));
                         manageBtn.getStyleClass().add("button");
-                        manageBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 5;");
+                        manageBtn.setStyle("-fx-padding: 2 4;");
                         manageBtn.setOnAction(e -> {
                             e.consume();
                             openGroupManagementDialog(item);
@@ -260,28 +272,65 @@ public class ChatController {
                         actionsBox.getChildren().add(manageBtn);
                     }
 
-                    Button leaveBtn = new Button("RỜI");
-                    leaveBtn.getStyleClass().add("button-danger");
-                    leaveBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 5;");
-                    leaveBtn.setOnAction(e -> {
-                        e.consume();
-                        chatService.sendLeaveGroup(item.getGroupId());
-                    });
-                    actionsBox.getChildren().add(leaveBtn);
+                    if (isMember) {
+                        if (!isCreator) {
+                            Button leaveBtn = new Button("RỜI");
+                            leaveBtn.getStyleClass().add("button-danger");
+                            leaveBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 5;");
+                            leaveBtn.setOnAction(e -> {
+                                e.consume();
+                                chatService.sendLeaveGroup(item.getGroupId());
+                            });
+                            actionsBox.getChildren().add(leaveBtn);
+                        }
+                    } else if (isPending) {
+                        Label pendingTag = new Label("[CHỜ DUYỆT]");
+                        pendingTag.setStyle("-fx-text-fill: #b8522e; -fx-font-size: 9px; -fx-font-weight: bold;");
+                        actionsBox.getChildren().add(pendingTag);
+                    } else {
+                        Button joinBtn = new Button(item.isPublic() ? "+ VÀO" : "XIN VÀO");
+                        joinBtn.getStyleClass().add("button-action");
+                        joinBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 5;");
+                        joinBtn.setOnAction(e -> {
+                            e.consume();
+                            if (item.isPublic()) {
+                                chatService.sendJoinGroup(item.getGroupId());
+                            } else {
+                                chatService.sendRequestJoinGroup(item.getGroupId());
+                            }
+                        });
+                        actionsBox.getChildren().add(joinBtn);
+                    }
 
-                    cellBox.getChildren().addAll(icon, nameLabel, countLabel, spacer, actionsBox);
+                    cellBox.getChildren().addAll(iconNode, nameLabel, countLabel, spacer, actionsBox);
                     setGraphic(cellBox);
 
                     // Menu ngữ cảnh chuột phải
                     ContextMenu cm = new ContextMenu();
                     if (isCreator) {
-                        MenuItem manageItem = new MenuItem("⚙ Quản lý nhóm (Thêm / Kích)");
+                        MenuItem manageItem = new MenuItem("Quản trị nhóm");
                         manageItem.setOnAction(ev -> openGroupManagementDialog(item));
                         cm.getItems().add(manageItem);
                     }
-                    MenuItem leaveItem = new MenuItem("🚪 Rời nhóm");
-                    leaveItem.setOnAction(ev -> chatService.sendLeaveGroup(item.getGroupId()));
-                    cm.getItems().add(leaveItem);
+                    if (isMember) {
+                        MenuItem leaveItem = new MenuItem("Rời nhóm");
+                        leaveItem.setOnAction(ev -> chatService.sendLeaveGroup(item.getGroupId()));
+                        cm.getItems().add(leaveItem);
+                    } else if (isPending) {
+                        MenuItem cancelItem = new MenuItem("Hủy yêu cầu xin vào");
+                        cancelItem.setOnAction(ev -> chatService.sendCancelJoinRequest(item.getGroupId()));
+                        cm.getItems().add(cancelItem);
+                    } else {
+                        MenuItem joinItem = new MenuItem(item.isPublic() ? "Tham gia nhóm" : "Xin vào nhóm");
+                        joinItem.setOnAction(ev -> {
+                            if (item.isPublic()) {
+                                chatService.sendJoinGroup(item.getGroupId());
+                            } else {
+                                chatService.sendRequestJoinGroup(item.getGroupId());
+                            }
+                        });
+                        cm.getItems().add(joinItem);
+                    }
                     setContextMenu(cm);
                 }
             }
@@ -293,10 +342,122 @@ public class ChatController {
                 activeSelectedGroup = newVal;
                 activeSelectedPeer = null;
                 peersListView.getSelectionModel().clearSelection();
-                channelTargetLabel.setText("NHÓM: #" + newVal.getGroupName() + " (" + newVal.getMemberCount() + " thành viên)");
+                updateChannelTargetLabel();
                 reloadMessagesForActiveChannel();
             }
         });
+
+        // Lắng nghe cập nhật danh sách nhóm để đồng bộ giao diện thời gian thực
+        chatService.getAvailableGroups().addListener((ListChangeListener<GroupInfo>) c -> {
+            ClientUtils.runOnFxThread(() -> {
+                if (activeSelectedGroup != null) {
+                    GroupInfo updatedGroup = null;
+                    for (GroupInfo g : chatService.getAvailableGroups()) {
+                        if (g.getGroupId().equals(activeSelectedGroup.getGroupId())) {
+                            updatedGroup = g;
+                            break;
+                        }
+                    }
+                    if (updatedGroup != null) {
+                        activeSelectedGroup = updatedGroup;
+                        updateChannelTargetLabel();
+                        reloadMessagesForActiveChannel();
+                    }
+                }
+            });
+        });
+    }
+
+    // Cập nhật nhãn kênh trò chuyện trên thanh tiêu đề HUD
+    private void updateChannelTargetLabel() {
+        if (activeSelectedGroup != null) {
+            String myId = chatService.getClientId();
+            boolean isMember = activeSelectedGroup.hasMember(myId);
+            boolean isPending = activeSelectedGroup.hasJoinRequest(myId);
+            String modeStr = activeSelectedGroup.isPublic() ? " [CÔNG KHAI]" : " [KÍN]";
+            String statusStr = isMember ? " (" + activeSelectedGroup.getMemberCount() + " thành viên)"
+                    : (isPending ? " [ĐANG CHỜ DUYỆT]" : " [CHƯA THAM GIA]");
+            channelTargetLabel.setText("NHÓM: #" + activeSelectedGroup.getGroupName() + modeStr + statusStr);
+        } else if (activeSelectedPeer != null) {
+            channelTargetLabel.setText("TRÒ CHUYỆN RIÊNG VỚI: " + activeSelectedPeer.getDisplayName() + " [" + activeSelectedPeer.getCoordinates() + "]");
+        } else {
+            channelTargetLabel.setText("KÊNH CHUNG");
+        }
+    }
+
+    // Bật/tắt các công cụ soạn thảo tin nhắn dựa theo quyền thành viên của nhóm
+    private void updateInputControlsState() {
+        boolean disabled = (activeSelectedGroup != null && !activeSelectedGroup.hasMember(chatService.getClientId()));
+        messageInputField.setDisable(disabled);
+        sendButton.setDisable(disabled);
+        attachFileButton.setDisable(disabled);
+        emojiButton.setDisable(disabled);
+        recordAudioButton.setDisable(disabled);
+
+        if (disabled) {
+            messageInputField.setPromptText("Nội dung được bảo vệ. Vui lòng xin vào nhóm để mở khóa trò chuyện...");
+        } else {
+            messageInputField.setPromptText("Soạn tin nhắn... [Enter: Gửi | Shift+Enter: Xuống dòng | Kéo thả tệp]");
+        }
+    }
+
+    // Hiển thị thẻ khóa nội dung chuẩn NieR khi người dùng chưa tham gia nhóm kín
+    private void renderGroupLockedCard(GroupInfo group) {
+        VBox card = new VBox(12);
+        card.setAlignment(Pos.CENTER);
+        card.setStyle("-fx-background-color: #2b2923; -fx-padding: 30 20; -fx-border-color: #4b473b; -fx-border-width: 1px; -fx-max-width: 520px;");
+
+        boolean isPublic = group.isPublic();
+        boolean hasRequested = group.hasJoinRequest(chatService.getClientId());
+
+        Node iconNode = isPublic
+                ? IconUtils.createGlobeIcon(IconUtils.COLOR_SLATE, 36)
+                : (hasRequested ? IconUtils.createHourglassIcon(IconUtils.COLOR_OCHRE, 36) : IconUtils.createLockIcon(IconUtils.COLOR_OCHRE, 36));
+
+        Label titleLabel = new Label(isPublic ? "[ NHÓM CÔNG KHAI // TRUY CẬP TỰ DO ]" : "[ NHÓM KÍN // BẢO MẬT NỘI DUNG ]");
+        titleLabel.setStyle("-fx-text-fill: " + (isPublic ? "#4fc3f7" : "#e68a00") + "; -fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: monospace;");
+
+        Label nameLabel = new Label("#" + group.getGroupName());
+        nameLabel.setStyle("-fx-text-fill: #cdc8b4; -fx-font-weight: bold; -fx-font-size: 18px;");
+
+        Label descLabel;
+        Button actionButton;
+
+        if (isPublic) {
+            descLabel = new Label("Nhóm này được thiết lập ở chế độ Công Khai. Bất kỳ ai cũng có thể tham gia để đọc và gửi tin nhắn.");
+            descLabel.setStyle("-fx-text-fill: #a5a08f; -fx-font-size: 11px; -fx-wrap-text: true; -fx-text-alignment: center;");
+
+            actionButton = new Button("THAM GIA NHÓM NGAY");
+            actionButton.getStyleClass().add("button-action");
+            actionButton.setGraphic(IconUtils.createGlobeIcon(IconUtils.COLOR_WHITE, 14));
+            actionButton.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 8 20;");
+            actionButton.setOnAction(e -> chatService.sendJoinGroup(group.getGroupId()));
+        } else if (hasRequested) {
+            descLabel = new Label("Yêu cầu xin vào nhóm của bạn đã được gửi tới Trưởng nhóm. Vui lòng chờ Trưởng nhóm phê duyệt.");
+            descLabel.setStyle("-fx-text-fill: #e0d9c4; -fx-font-size: 11px; -fx-wrap-text: true; -fx-text-alignment: center;");
+
+            actionButton = new Button("HỦY YÊU CẦU XIN VÀO");
+            actionButton.getStyleClass().add("button-danger");
+            actionButton.setGraphic(IconUtils.createCrossIcon(IconUtils.COLOR_WHITE, 14));
+            actionButton.setStyle("-fx-font-size: 11px; -fx-padding: 8 20;");
+            actionButton.setOnAction(e -> chatService.sendCancelJoinRequest(group.getGroupId()));
+        } else {
+            descLabel = new Label("Đây là nhóm kín. Toàn bộ nội dung trò chuyện và tệp tin đều được bảo vệ. Bạn cần gửi yêu cầu xin vào để Trưởng nhóm phê duyệt.");
+            descLabel.setStyle("-fx-text-fill: #a5a08f; -fx-font-size: 11px; -fx-wrap-text: true; -fx-text-alignment: center;");
+
+            actionButton = new Button("GỬI YÊU CẦU XIN VÀO NHÓM");
+            actionButton.getStyleClass().add("button-action");
+            actionButton.setGraphic(IconUtils.createMailIcon(IconUtils.COLOR_WHITE, 14));
+            actionButton.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 8 20;");
+            actionButton.setOnAction(e -> chatService.sendRequestJoinGroup(group.getGroupId()));
+        }
+
+        card.getChildren().addAll(iconNode, titleLabel, nameLabel, descLabel, actionButton);
+
+        VBox centerWrapper = new VBox(card);
+        centerWrapper.setAlignment(Pos.CENTER);
+        centerWrapper.setStyle("-fx-padding: 40 10;");
+        messagesContainer.getChildren().add(centerWrapper);
     }
 
     // Mở hộp thoại Quản lý nhóm (Chỉ Admin / Người tạo nhóm mới có quyền)
@@ -313,20 +474,51 @@ public class ChatController {
         dialog.getDialogPane().getButtonTypes().add(closeButton);
 
         VBox contentBox = new VBox(10);
-        contentBox.setPrefWidth(420);
-        contentBox.setPrefHeight(360);
+        contentBox.setPrefWidth(460);
+        contentBox.setPrefHeight(480);
 
+        // Hàng điều khiển chế độ Công khai / Kín
+        HBox modeBar = new HBox(10);
+        modeBar.setAlignment(Pos.CENTER_LEFT);
+        modeBar.setStyle("-fx-background-color: #2b2923; -fx-padding: 8 10; -fx-border-color: #4b473b; -fx-border-width: 1px;");
+
+        Label modeLabel = new Label("CHẾ ĐỘ NHÓM:");
+        modeLabel.setStyle("-fx-text-fill: #a5a08f; -fx-font-size: 10px; -fx-font-weight: bold;");
+
+        Label modeStatus = new Label(targetGroup.isPublic() ? "CÔNG KHAI (Ai cũng có thể vào)" : "KÍN (Cần Admin duyệt)");
+        modeStatus.setStyle("-fx-text-fill: " + (targetGroup.isPublic() ? "#4fc3f7" : "#e68a00") + "; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+        Region modeSpacer = new Region();
+        HBox.setHgrow(modeSpacer, Priority.ALWAYS);
+
+        Button toggleModeBtn = new Button(targetGroup.isPublic() ? "CHUYỂN SANG KÍN" : "CHUYỂN SANG CÔNG KHAI");
+        toggleModeBtn.getStyleClass().add("button");
+        toggleModeBtn.setGraphic(targetGroup.isPublic()
+                ? IconUtils.createLockIcon(IconUtils.COLOR_OCHRE, 12)
+                : IconUtils.createGlobeIcon(IconUtils.COLOR_SLATE, 12));
+        toggleModeBtn.setStyle("-fx-font-size: 10px; -fx-padding: 3 8;");
+        modeBar.getChildren().addAll(modeLabel, modeStatus, modeSpacer, toggleModeBtn);
+
+        // Mục 1: Yêu cầu chờ duyệt
+        Label pendingHeader = new Label("[ YÊU CẦU CHỜ DUYỆT (0) ]");
+        pendingHeader.getStyleClass().add("panel-header");
+
+        ListView<String> pendingListView = new ListView<>();
+        pendingListView.setPrefHeight(100);
+
+        // Mục 2: Thành viên trong nhóm
         Label membersHeader = new Label("[ THÀNH VIÊN TRONG NHÓM ]");
         membersHeader.getStyleClass().add("panel-header");
 
         ListView<String> membersListView = new ListView<>();
-        membersListView.setPrefHeight(140);
+        membersListView.setPrefHeight(120);
 
+        // Mục 3: Thêm người dùng trực tuyến
         Label nonMembersHeader = new Label("[ THÊM NGƯỜI DÙNG ĐANG TRỰC TUYẾN ]");
         nonMembersHeader.getStyleClass().add("panel-header");
 
         ListView<ClientInfo> nonMembersListView = new ListView<>();
-        nonMembersListView.setPrefHeight(140);
+        nonMembersListView.setPrefHeight(120);
 
         Runnable refreshLists = () -> {
             GroupInfo currentGroup = null;
@@ -342,16 +534,72 @@ public class ChatController {
             }
 
             final GroupInfo finalGroup = currentGroup;
+            boolean isPub = finalGroup.isPublic();
+            modeStatus.setText(isPub ? "CÔNG KHAI (Ai cũng có thể vào)" : "KÍN (Cần Admin duyệt)");
+            modeStatus.setStyle("-fx-text-fill: " + (isPub ? "#4fc3f7" : "#e68a00") + "; -fx-font-weight: bold; -fx-font-size: 11px;");
+            toggleModeBtn.setText(isPub ? "CHUYỂN SANG KÍN" : "CHUYỂN SANG CÔNG KHAI");
+            toggleModeBtn.setGraphic(isPub
+                    ? IconUtils.createLockIcon(IconUtils.COLOR_OCHRE, 12)
+                    : IconUtils.createGlobeIcon(IconUtils.COLOR_SLATE, 12));
+            toggleModeBtn.setOnAction(e -> chatService.sendToggleGroupPublic(finalGroup.getGroupId(), !isPub));
+
+            pendingHeader.setText("[ YÊU CẦU CHỜ DUYỆT (" + finalGroup.getPendingCount() + ") ]");
+            pendingListView.getItems().setAll(finalGroup.getPendingMemberIds());
+
+            membersHeader.setText("[ THÀNH VIÊN TRONG NHÓM (" + finalGroup.getMemberCount() + ") ]");
             membersListView.getItems().setAll(finalGroup.getMemberIds());
 
             ObservableList<ClientInfo> nonMembers = FXCollections.observableArrayList();
             for (ClientInfo peer : chatService.getOnlinePeers()) {
-                if (!finalGroup.hasMember(peer.getClientId())) {
+                if (!finalGroup.hasMember(peer.getClientId()) && !finalGroup.hasJoinRequest(peer.getClientId())) {
                     nonMembers.add(peer);
                 }
             }
             nonMembersListView.getItems().setAll(nonMembers);
         };
+
+        pendingListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String requesterId, boolean empty) {
+                super.updateItem(requesterId, empty);
+                if (empty || requesterId == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+
+                    String name = requesterId;
+                    for (ClientInfo p : chatService.getOnlinePeers()) {
+                        if (p.getClientId().equals(requesterId)) {
+                            name = p.getDisplayName() + " [" + p.getCoordinates() + "]";
+                            break;
+                        }
+                    }
+
+                    Label nameLbl = new Label(name);
+                    nameLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #cdc8b4;");
+
+                    Region sp = new Region();
+                    HBox.setHgrow(sp, Priority.ALWAYS);
+
+                    Button approveBtn = new Button("DUYỆT");
+                    approveBtn.getStyleClass().add("button-action");
+                    approveBtn.setGraphic(IconUtils.createCheckIcon(IconUtils.COLOR_WHITE, 10));
+                    approveBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
+                    approveBtn.setOnAction(e -> chatService.sendApproveJoinRequest(targetGroup.getGroupId(), requesterId));
+
+                    Button rejectBtn = new Button("TỪ CHỐI");
+                    rejectBtn.getStyleClass().add("button-danger");
+                    rejectBtn.setGraphic(IconUtils.createCrossIcon(IconUtils.COLOR_WHITE, 10));
+                    rejectBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
+                    rejectBtn.setOnAction(e -> chatService.sendRejectJoinRequest(targetGroup.getGroupId(), requesterId));
+
+                    box.getChildren().addAll(nameLbl, sp, approveBtn, rejectBtn);
+                    setGraphic(box);
+                }
+            }
+        });
 
         membersListView.setCellFactory(lv -> new ListCell<>() {
             @Override
@@ -387,8 +635,9 @@ public class ChatController {
 
                     if (!isCreator) {
                         Button kickBtn = new Button("KÍCH");
+                        kickBtn.setGraphic(IconUtils.createUserMinusIcon(IconUtils.COLOR_WHITE, 10));
                         kickBtn.getStyleClass().add("button-danger");
-                        kickBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 8;");
+                        kickBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
                         kickBtn.setOnAction(e -> chatService.sendKickUserFromGroup(targetGroup.getGroupId(), memberId));
                         box.getChildren().add(kickBtn);
                     }
@@ -416,8 +665,9 @@ public class ChatController {
                     HBox.setHgrow(sp, Priority.ALWAYS);
 
                     Button addBtn = new Button("+ THÊM");
+                    addBtn.setGraphic(IconUtils.createUserPlusIcon(IconUtils.COLOR_WHITE, 10));
                     addBtn.getStyleClass().add("button-action");
-                    addBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 8;");
+                    addBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
                     addBtn.setOnAction(e -> chatService.sendAddUserToGroup(targetGroup.getGroupId(), peer.getClientId()));
 
                     box.getChildren().addAll(nameLbl, sp, addBtn);
@@ -439,24 +689,54 @@ public class ChatController {
 
         refreshLists.run();
 
-        contentBox.getChildren().addAll(membersHeader, membersListView, nonMembersHeader, nonMembersListView);
+        contentBox.getChildren().addAll(modeBar, pendingHeader, pendingListView, membersHeader, membersListView, nonMembersHeader, nonMembersListView);
         dialog.getDialogPane().setContent(contentBox);
         dialog.showAndWait();
     }
 
-    // Mở hộp thoại tạo nhóm Multicast mới
+    // Mở hộp thoại tạo nhóm Multicast mới (Hỗ trợ cấu hình Công khai / Kín)
     @FXML
     private void handleCreateGroup() {
-        TextInputDialog dialog = new TextInputDialog("Nhóm-" + (chatService.getAvailableGroups().size() + 1));
+        Dialog<Pair<String, Boolean>> dialog = new Dialog<>();
         dialog.setTitle("PeerChat - Tạo nhóm Multicast");
         dialog.setHeaderText("TẠO NHÓM MULTICAST QUA TCP");
-        dialog.setContentText("Nhập tên nhóm:");
+
         try {
             dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
         } catch (Exception ignored) {}
-        dialog.showAndWait().ifPresent(name -> {
-            if (!name.trim().isEmpty()) {
-                chatService.sendCreateGroup(name.trim());
+
+        ButtonType createButtonType = new ButtonType("TẠO NHÓM", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
+
+        VBox content = new VBox(12);
+        content.setPrefWidth(380);
+        content.setPadding(new Insets(10));
+
+        Label namePrompt = new Label("Tên nhóm:");
+        namePrompt.setStyle("-fx-font-weight: bold;");
+
+        TextField nameField = new TextField("Nhóm-" + (chatService.getAvailableGroups().size() + 1));
+        nameField.setStyle("-fx-background-color: #2b2923; -fx-text-fill: #cdc8b4; -fx-border-color: #8c8675;");
+
+        CheckBox publicCheckBox = new CheckBox("Nhóm Công Khai (Cho phép mọi người tự do tham gia không cần duyệt)");
+        publicCheckBox.setStyle("-fx-font-size: 11px; -fx-text-fill: #1c1b17;");
+        publicCheckBox.setSelected(false); // Mặc định là nhóm kín cần xét duyệt
+
+        content.getChildren().addAll(namePrompt, nameField, publicCheckBox);
+        dialog.getDialogPane().setContent(content);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == createButtonType) {
+                return new Pair<>(nameField.getText(), publicCheckBox.isSelected());
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(result -> {
+            String name = result.getKey();
+            boolean isPublic = result.getValue();
+            if (name != null && !name.trim().isEmpty()) {
+                chatService.sendCreateGroup(name.trim(), isPublic);
             }
         });
     }
@@ -478,6 +758,13 @@ public class ChatController {
     // Tải lại các tin nhắn tương ứng với kênh đang mở (Kênh chung, Nhóm hoặc Chat riêng)
     private void reloadMessagesForActiveChannel() {
         messagesContainer.getChildren().clear();
+        updateInputControlsState();
+
+        if (activeSelectedGroup != null && !activeSelectedGroup.hasMember(chatService.getClientId())) {
+            renderGroupLockedCard(activeSelectedGroup);
+            return;
+        }
+
         for (Message msg : chatService.getMessageHistory()) {
             if (isMessageBelongToActiveChannel(msg)) {
                 renderMessageCard(msg);
@@ -600,6 +887,10 @@ public class ChatController {
     // Đẩy tập tin kéo thả lên server để chia sẻ vào cuộc trò chuyện đang chọn
     private void stageAndSendDroppedFile(File file) {
         if (file != null && file.exists() && file.isFile()) {
+            if (activeSelectedGroup != null && !activeSelectedGroup.hasMember(chatService.getClientId())) {
+                ClientUtils.showError("TRUY CẬP BỊ TỪ CHỐI", "Không thể gửi tệp", "Bạn chưa phải là thành viên của nhóm này.");
+                return;
+            }
             if (FileTransferController.isImageFile(file.getName())) {
                 try {
                     imageCache.put(file.getName(), new Image(file.toURI().toString()));
@@ -1274,6 +1565,10 @@ public class ChatController {
 
         String targetId;
         if (activeSelectedGroup != null) {
+            if (!activeSelectedGroup.hasMember(chatService.getClientId())) {
+                ClientUtils.showError("TRUY CẬP BỊ TỪ CHỐI", "Không thể gửi tin nhắn", "Bạn chưa phải là thành viên của nhóm này.");
+                return;
+            }
             targetId = activeSelectedGroup.getGroupId();
         } else if (activeSelectedPeer != null) {
             targetId = activeSelectedPeer.getClientId();
