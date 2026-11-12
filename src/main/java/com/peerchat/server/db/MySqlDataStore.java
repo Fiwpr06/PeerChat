@@ -142,9 +142,14 @@ public class MySqlDataStore implements ChatDataStore {
                     group_id VARCHAR(64) PRIMARY KEY,
                     group_name VARCHAR(100) NOT NULL,
                     creator_id VARCHAR(64) NOT NULL,
+                    is_public BOOLEAN DEFAULT FALSE,
                     created_at BIGINT NOT NULL
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """);
+
+            try {
+                stmt.executeUpdate("ALTER TABLE chat_groups ADD COLUMN is_public BOOLEAN DEFAULT FALSE");
+            } catch (Exception ignored) {}
 
             // Bảng thành viên nhóm
             stmt.executeUpdate("""
@@ -154,6 +159,17 @@ public class MySqlDataStore implements ChatDataStore {
                     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (group_id, user_id),
                     CONSTRAINT fk_group FOREIGN KEY (group_id) REFERENCES chat_groups(group_id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """);
+
+            // Bảng yêu cầu xin vào nhóm kín
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS group_join_requests (
+                    group_id VARCHAR(64) NOT NULL,
+                    user_id VARCHAR(64) NOT NULL,
+                    created_at BIGINT NOT NULL,
+                    PRIMARY KEY (group_id, user_id),
+                    CONSTRAINT fk_req_group FOREIGN KEY (group_id) REFERENCES chat_groups(group_id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """);
 
@@ -361,9 +377,9 @@ public class MySqlDataStore implements ChatDataStore {
     @Override
     public void saveGroup(GroupInfo group) {
         if (!available || group == null) return;
-        String sql = "INSERT INTO chat_groups (group_id, group_name, creator_id, created_at) " +
-                "VALUES (?, ?, ?, ?) " +
-                "ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), creator_id=VALUES(creator_id)";
+        String sql = "INSERT INTO chat_groups (group_id, group_name, creator_id, is_public, created_at) " +
+                "VALUES (?, ?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), creator_id=VALUES(creator_id), is_public=VALUES(is_public)";
         Connection conn = getValidConnection();
         if (conn == null) return;
 
@@ -371,12 +387,17 @@ public class MySqlDataStore implements ChatDataStore {
             ps.setString(1, group.getGroupId());
             ps.setString(2, group.getGroupName());
             ps.setString(3, group.getCreatorId());
-            ps.setLong(4, group.getCreatedAt());
+            ps.setBoolean(4, group.isPublic());
+            ps.setLong(5, group.getCreatedAt());
             ps.executeUpdate();
 
             // Lưu các thành viên
             for (String memberId : group.getMemberIds()) {
                 addGroupMember(group.getGroupId(), memberId);
+            }
+            // Lưu các yêu cầu đang chờ
+            for (String pendingId : group.getPendingMemberIds()) {
+                addJoinRequest(group.getGroupId(), pendingId);
             }
         } catch (SQLException e) {
             LOGGER.warning("[MYSQL_SAVE_GROUP_ERR] " + e.getMessage());
@@ -437,6 +458,7 @@ public class MySqlDataStore implements ChatDataStore {
 
         String sqlGroup = "SELECT * FROM chat_groups";
         String sqlMembers = "SELECT user_id FROM group_members WHERE group_id = ?";
+        String sqlRequests = "SELECT user_id FROM group_join_requests WHERE group_id = ?";
         Connection conn = getValidConnection();
         if (conn == null) return list;
 
@@ -447,9 +469,10 @@ public class MySqlDataStore implements ChatDataStore {
                 String groupId = rs.getString("group_id");
                 String groupName = rs.getString("group_name");
                 String creatorId = rs.getString("creator_id");
+                boolean isPublic = rs.getBoolean("is_public");
                 long createdAt = rs.getLong("created_at");
 
-                GroupInfo group = new GroupInfo(groupId, groupName, creatorId);
+                GroupInfo group = new GroupInfo(groupId, groupName, creatorId, isPublic);
                 group.setCreatedAt(createdAt);
 
                 try (PreparedStatement psMem = conn.prepareStatement(sqlMembers)) {
@@ -460,12 +483,71 @@ public class MySqlDataStore implements ChatDataStore {
                         }
                     }
                 }
+
+                try (PreparedStatement psReq = conn.prepareStatement(sqlRequests)) {
+                    psReq.setString(1, groupId);
+                    try (ResultSet rsReq = psReq.executeQuery()) {
+                        while (rsReq.next()) {
+                            group.addJoinRequest(rsReq.getString("user_id"));
+                        }
+                    }
+                }
+
                 list.add(group);
             }
         } catch (SQLException e) {
             LOGGER.warning("[MYSQL_GET_GROUPS_ERR] " + e.getMessage());
         }
         return list;
+    }
+
+    @Override
+    public void addJoinRequest(String groupId, String userId) {
+        if (!available || groupId == null || userId == null) return;
+        String sql = "INSERT IGNORE INTO group_join_requests (group_id, user_id, created_at) VALUES (?, ?, ?)";
+        Connection conn = getValidConnection();
+        if (conn == null) return;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, groupId);
+            ps.setString(2, userId);
+            ps.setLong(3, System.currentTimeMillis());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.warning("[MYSQL_ADD_JOIN_REQ_ERR] " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void removeJoinRequest(String groupId, String userId) {
+        if (!available || groupId == null || userId == null) return;
+        String sql = "DELETE FROM group_join_requests WHERE group_id = ? AND user_id = ?";
+        Connection conn = getValidConnection();
+        if (conn == null) return;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, groupId);
+            ps.setString(2, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.warning("[MYSQL_REMOVE_JOIN_REQ_ERR] " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void updateGroupPublicStatus(String groupId, boolean isPublic) {
+        if (!available || groupId == null) return;
+        String sql = "UPDATE chat_groups SET is_public = ? WHERE group_id = ?";
+        Connection conn = getValidConnection();
+        if (conn == null) return;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setBoolean(1, isPublic);
+            ps.setString(2, groupId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.warning("[MYSQL_UPDATE_GROUP_PUBLIC_ERR] " + e.getMessage());
+        }
     }
 
     @Override

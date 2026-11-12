@@ -9,13 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Logger;
 
-// Kho lưu trữ tạm thời trên RAM (In-Memory) sử dụng khi MySQL không khả dụng
-// Đảm bảo Server chạy an toàn 100%, không bao giờ bị dừng đột ngột
+// Triển khai lưu trữ tạm thời trên RAM (Bộ nhớ trong)
+// Dùng khi Server chạy ở chế độ nhẹ độc lập hoặc làm Graceful Fallback nếu MySQL gặp sự cố
 public class InMemoryDataStore implements ChatDataStore {
-    private static final Logger LOGGER = Logger.getLogger(InMemoryDataStore.class.getName());
-    private static final int MAX_HISTORY = 100;
 
     private final List<Message> messageHistory = new CopyOnWriteArrayList<>();
     private final Map<String, FileInfo> storedFiles = new ConcurrentHashMap<>();
@@ -23,7 +20,7 @@ public class InMemoryDataStore implements ChatDataStore {
 
     @Override
     public boolean init() {
-        LOGGER.info("[IN_MEMORY_STORE] Khởi tạo kho lưu trữ In-Memory thành công.");
+        // RAM data store luôn sẵn sàng
         return true;
     }
 
@@ -40,7 +37,8 @@ public class InMemoryDataStore implements ChatDataStore {
     @Override
     public void saveMessage(Message message) {
         if (message == null) return;
-        if (messageHistory.size() >= MAX_HISTORY) {
+        // Giới hạn 200 tin gần nhất trên RAM để tránh phình bộ nhớ
+        if (messageHistory.size() >= 200) {
             messageHistory.remove(0);
         }
         messageHistory.add(message);
@@ -98,6 +96,30 @@ public class InMemoryDataStore implements ChatDataStore {
     @Override
     public List<GroupInfo> getAllGroups() {
         return new ArrayList<>(groups.values());
+    }
+
+    @Override
+    public void addJoinRequest(String groupId, String userId) {
+        GroupInfo g = groups.get(groupId);
+        if (g != null && userId != null) {
+            g.addJoinRequest(userId);
+        }
+    }
+
+    @Override
+    public void removeJoinRequest(String groupId, String userId) {
+        GroupInfo g = groups.get(groupId);
+        if (g != null && userId != null) {
+            g.removeJoinRequest(userId);
+        }
+    }
+
+    @Override
+    public void updateGroupPublicStatus(String groupId, boolean isPublic) {
+        GroupInfo g = groups.get(groupId);
+        if (g != null) {
+            g.setPublic(isPublic);
+        }
     }
 
     @Override

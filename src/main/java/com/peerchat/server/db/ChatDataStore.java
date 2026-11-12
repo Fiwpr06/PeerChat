@@ -46,6 +46,15 @@ public interface ChatDataStore {
     // Lấy toàn bộ danh sách các nhóm
     List<GroupInfo> getAllGroups();
 
+    // Thêm yêu cầu xin vào nhóm
+    void addJoinRequest(String groupId, String userId);
+
+    // Xóa yêu cầu xin vào nhóm
+    void removeJoinRequest(String groupId, String userId);
+
+    // Cập nhật chế độ công khai / kín của nhóm
+    void updateGroupPublicStatus(String groupId, boolean isPublic);
+
     // Đóng kết nối khi Server tắt
     void close();
 }
